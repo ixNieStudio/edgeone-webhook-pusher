@@ -1,5 +1,5 @@
-// Webhook handler for /{sendKey}.send
-// This is a separate entry point for the webhook push endpoint
+// Webhook handler for /send/{sendKey}
+// This is the entry point for the webhook push endpoint
 
 import Koa from 'koa';
 import Router from '@koa/router';
@@ -46,10 +46,12 @@ app.use(async (ctx, next) => {
 });
 
 /**
- * Webhook push endpoint: /{sendKey}.send
+ * Webhook push endpoint: /send/{sendKey}
  * Supports GET params, POST JSON, POST form
+ * 
+ * Example: GET /send/SCT123456?title=Hello&desp=World
  */
-router.all('/:sendKey.send', async (ctx, next) => {
+router.all('/:sendKey', async (ctx, next) => {
   const { sendKey } = ctx.params;
 
   // Validate SendKey

@@ -4,14 +4,14 @@ import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// Node functions should be at project root (not in .output)
+// Node functions at project root
 const baseOutDir = `${__dirname}/../../../node-functions`;
 
-// Clean and create output directories
+// Clean and create output directory
 if (existsSync(baseOutDir)) {
   rmSync(baseOutDir, { recursive: true });
 }
-mkdirSync(`${baseOutDir}/api`, { recursive: true });
+mkdirSync(`${baseOutDir}/send`, { recursive: true });
 
 // Common esbuild options
 const commonOptions = {
@@ -44,28 +44,16 @@ const commonOptions = {
 
 console.log('Building Node Functions...');
 
-// Build 1: Webhook handler at root level
-// Route: /{sendKey}.send
+// Webhook handler: /send/{sendKey}
+// File: node-functions/send/[key].js -> matches /send/{key}
 await esbuild.build({
   ...commonOptions,
   entryPoints: [`${__dirname}/../src/webhook.ts`],
-  outfile: `${baseOutDir}/[[default]].js`,
+  outfile: `${baseOutDir}/send/[key].js`,
   banner: {
-    js: '// EdgeOne Node Functions - Webhook Handler\n// Route: /{sendKey}.send\n',
+    js: '// EdgeOne Node Functions - Webhook Handler\n// Route: /send/{sendKey}\n',
   },
 });
-console.log(`✓ Webhook: ${baseOutDir}/[[default]].js`);
-
-// Build 2: API routes
-// Route: /api/*
-await esbuild.build({
-  ...commonOptions,
-  entryPoints: [`${__dirname}/../src/app.ts`],
-  outfile: `${baseOutDir}/api/[[default]].js`,
-  banner: {
-    js: '// EdgeOne Node Functions - API Routes\n// Route: /api/*\n',
-  },
-});
-console.log(`✓ API: ${baseOutDir}/api/[[default]].js`);
+console.log(`✓ Webhook: node-functions/send/[key].js -> /send/{sendKey}`);
 
 console.log('\nBuild complete!');
