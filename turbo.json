@@ -1,0 +1,26 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".output/**", "dist/**", ".nuxt/**"]
+    },
+    "build:functions": {
+      "dependsOn": ["@webhook-pusher/shared#build"],
+      "outputs": ["../../.output/public/edge-functions/**", "../../.output/public/node-functions/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "test": {
+      "outputs": ["coverage/**"]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

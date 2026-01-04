@@ -1,0 +1,25 @@
+{
+  "$schema": "https://edgeone.ai/schema/edgeone.json",
+  "name": "edgeone-webhook-pusher",
+  "build": {
+    "command": "pnpm build",
+    "outputDir": ".output/public"
+  },
+  "devCommand": "pnpm dev",
+  "kv": {
+    "namespaces": [
+      {
+        "binding": "USERS_KV",
+        "id": "users"
+      },
+      {
+        "binding": "MESSAGES_KV",
+        "id": "messages"
+      },
+      {
+        "binding": "CHANNELS_KV",
+        "id": "channels"
+      }
+    ]
+  }
+}

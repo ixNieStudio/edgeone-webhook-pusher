@@ -1,0 +1,23 @@
+{
+  "name": "edgeone-webhook-pusher",
+  "version": "1.0.0",
+  "description": "Serverless webhook push service built on Tencent EdgeOne Edge Functions",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build && turbo build:functions",
+    "build:functions": "turbo build:functions",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean && rm -rf .output"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.2"
+  }
+}

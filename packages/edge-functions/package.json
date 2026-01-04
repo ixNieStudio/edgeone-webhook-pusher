@@ -1,0 +1,17 @@
+{
+  "name": "@webhook-pusher/edge-functions",
+  "version": "1.0.0",
+  "description": "Edge Functions for EdgeOne Webhook Pusher (KV persistence layer)",
+  "type": "module",
+  "scripts": {
+    "build": "tsx build.ts",
+    "build:functions": "tsx build.ts",
+    "dev": "tsx build.ts --watch",
+    "clean": "rm -rf ../../.output/public/edge-functions"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

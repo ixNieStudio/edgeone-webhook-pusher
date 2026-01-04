@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.output/
+*.tsbuildinfo
+
+# Nuxt
+.nuxt/
+.nitro/
+.cache/
+
+# ide
+.code/
+.kiro/
+.cursor/
+.trae/
+.windsurf/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Test
+coverage/
+.vitest/
+*.lcov
+
+# Turbo
+.turbo/
+
+# EdgeOne
+.edgeone/
+
+# Lock files (only keep pnpm-lock.yaml)
+package-lock.json
+yarn.lock
+
+# Temp files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Debug
+.eslintcache
+*.pid
+*.seed
+*.pid.lock

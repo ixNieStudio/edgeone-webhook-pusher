@@ -1,0 +1,6 @@
+packages:
+  - 'packages/*'
+
+# 统一 node_modules 到根目录
+node-linker: hoisted
+shamefully-hoist: true

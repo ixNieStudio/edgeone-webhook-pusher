@@ -1,0 +1,29 @@
+{
+  "name": "@webhook-pusher/node-functions",
+  "version": "1.0.0",
+  "description": "Node Functions for EdgeOne Webhook Pusher (Koa backend)",
+  "type": "module",
+  "main": "./dist/app.js",
+  "scripts": {
+    "build": "tsc && node scripts/copy-to-output.js",
+    "build:functions": "tsc && node scripts/copy-to-output.js",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist ../../.output/public/node-functions",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@webhook-pusher/shared": "workspace:*",
+    "koa": "^2.15.3",
+    "@koa/router": "^13.1.0",
+    "koa-bodyparser": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.15.0",
+    "@types/koa__router": "^12.0.4",
+    "@types/koa-bodyparser": "^4.3.12",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "fast-check": "^3.23.2"
+  }
+}
