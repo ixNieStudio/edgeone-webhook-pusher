@@ -1,0 +1,16 @@
+[
+  {
+    "name": "webhook",
+    "entry": "send/[[default]].js",
+    "routes": [
+      "/send/*"
+    ]
+  },
+  {
+    "name": "api",
+    "entry": "api/[[default]].js",
+    "routes": [
+      "/api/*"
+    ]
+  }
+]

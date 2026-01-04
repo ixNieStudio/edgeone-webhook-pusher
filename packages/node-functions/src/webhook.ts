@@ -50,6 +50,9 @@ app.use(async (ctx, next) => {
  * Supports GET params, POST JSON, POST form
  * 
  * Example: GET /send/SCT123456?title=Hello&desp=World
+ * 
+ * Note: Using [[default]].js, the /send prefix is handled by directory structure
+ * So this route matches /:sendKey which becomes /send/:sendKey
  */
 router.all('/:sendKey', async (ctx, next) => {
   const { sendKey } = ctx.params;
