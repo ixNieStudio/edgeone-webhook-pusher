@@ -143,4 +143,10 @@ edgeone-webhook-pusher/
 
 ## 许可证
 
-MIT
+GPL-3.0
+
+## 作者
+
+colin@ixNieStudio  
+Email: colin@ixnie.cn  
+GitHub: https://github.com/ixNieStudio

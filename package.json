@@ -2,6 +2,15 @@
   "name": "edgeone-webhook-pusher",
   "version": "1.0.0",
   "description": "Serverless webhook push service built on Tencent EdgeOne Edge Functions",
+  "author": {
+    "name": "colin@ixNieStudio",
+    "email": "colin@ixnie.cn"
+  },
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ixNieStudio/edgeone-webhook-pusher.git"
+  },
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "engines": {
