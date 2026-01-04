@@ -7,7 +7,7 @@
     "build": "tsx build.ts",
     "build:functions": "tsx build.ts",
     "dev": "tsx build.ts --watch",
-    "clean": "rimraf ../../dist/edge-functions"
+    "clean": "rimraf ../../edge-functions"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
