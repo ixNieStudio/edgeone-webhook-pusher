@@ -1,5 +1,14 @@
-// Webhook handler for /send/{sendKey}
-// This is the entry point for the webhook push endpoint
+/**
+ * EdgeOne Node Functions - Webhook Handler (Koa)
+ * Route: /send/*
+ * 
+ * This handles webhook push requests: /send/{sendKey}
+ * Supports GET params, POST JSON, POST form
+ * 
+ * Example: GET /send/SCT123456?title=Hello&desp=World
+ * 
+ * EdgeOne Node Functions support Koa - just export the app instance.
+ */
 
 import Koa from 'koa';
 import Router from '@koa/router';
@@ -46,13 +55,9 @@ app.use(async (ctx, next) => {
 });
 
 /**
- * Webhook push endpoint: /send/{sendKey}
- * Supports GET params, POST JSON, POST form
- * 
- * Example: GET /send/SCT123456?title=Hello&desp=World
- * 
- * Note: Using [[default]].js, the /send prefix is handled by directory structure
- * So this route matches /:sendKey which becomes /send/:sendKey
+ * Webhook push endpoint: /:sendKey
+ * Since this file is at /send/[[default]].js, the route /:sendKey
+ * will match /send/{sendKey}
  */
 router.all('/:sendKey', async (ctx, next) => {
   const { sendKey } = ctx.params;

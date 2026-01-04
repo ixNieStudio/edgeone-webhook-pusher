@@ -19,11 +19,11 @@
   },
   "scripts": {
     "dev:console": "turbo dev --filter=console",
-    "build": "turbo build --filter=console && turbo build:functions",
+    "build": "turbo build:functions && turbo build --filter=console",
     "build:functions": "turbo build:functions",
     "test": "turbo test",
     "lint": "turbo lint",
-    "clean": "turbo clean && rimraf dist .output .turbo"
+    "clean": "turbo clean && rimraf dist edge-functions node-functions .output .turbo"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",

@@ -1,16 +1,10 @@
 import * as esbuild from 'esbuild';
-import { readdirSync, statSync, mkdirSync, existsSync, rmSync, writeFileSync } from 'fs';
-import { join, relative, dirname, basename } from 'path';
+import { readdirSync, statSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { join, relative, dirname } from 'path';
 
 const SRC_DIR = './src';
-// Output to project root edge-functions directory
-const OUT_DIR = '../../edge-functions';
-
-interface EdgeFunctionMeta {
-  name: string;
-  entry: string;
-  routes: string[];
-}
+// Output to project root dist/edge-functions directory (EdgeOne Pages uses file-system routing)
+const OUT_DIR = '../../dist/edge-functions';
 
 // Find all TS files in src directory
 function findTsFiles(dir: string): string[] {
@@ -28,37 +22,6 @@ function findTsFiles(dir: string): string[] {
   }
 
   return files;
-}
-
-// Convert file path to route pattern
-// e.g., api/kv/channels.ts -> /api/kv/channels
-function filePathToRoute(relativePath: string): string {
-  const withoutExt = relativePath.replace(/\.ts$/, '');
-  // Handle index files
-  if (withoutExt.endsWith('/index') || withoutExt === 'index') {
-    return '/' + withoutExt.replace(/\/index$/, '').replace(/^index$/, '');
-  }
-  return '/' + withoutExt;
-}
-
-// Generate meta.json for edge functions
-function generateMeta(sourceFiles: string[]): EdgeFunctionMeta[] {
-  const functions: EdgeFunctionMeta[] = [];
-
-  for (const srcFile of sourceFiles) {
-    const relativePath = relative(SRC_DIR, srcFile);
-    const jsPath = relativePath.replace(/\.ts$/, '.js');
-    const route = filePathToRoute(relativePath);
-    const name = basename(relativePath, '.ts');
-
-    functions.push({
-      name,
-      entry: jsPath,
-      routes: [route],
-    });
-  }
-
-  return functions;
 }
 
 async function build() {
@@ -81,6 +44,8 @@ async function build() {
       mkdirSync(outDir, { recursive: true });
     }
 
+    // EdgeOne Edge Functions: simple JS files with onRequest export
+    // No bundling needed - EdgeOne uses file-system routing
     await esbuild.build({
       entryPoints: [srcFile],
       outfile: outFile,
@@ -95,13 +60,12 @@ async function build() {
     console.log(`  ✓ ${relativePath.replace(/\.ts$/, '.js')}`);
   }
 
-  // Generate meta.json
-  const meta = generateMeta(sourceFiles);
-  const metaPath = join(OUT_DIR, 'meta.json');
-  writeFileSync(metaPath, JSON.stringify(meta, null, 2));
-  console.log(`  ✓ meta.json (${meta.length} functions)`);
+  // Note: EdgeOne Pages uses file-system routing, no meta.json needed
+  // Routes are automatically generated from directory structure:
+  // - /edge-functions/api/kv/users.js -> /api/kv/users
+  // - /edge-functions/api/kv/channels.js -> /api/kv/channels
 
-  console.log('Build complete!');
+  console.log('Edge Functions build complete!');
 }
 
 build().catch((err) => {

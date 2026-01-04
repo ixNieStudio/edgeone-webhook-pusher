@@ -1,15 +1,8 @@
 import * as esbuild from 'esbuild';
-import { mkdirSync, existsSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { mkdirSync, existsSync, rmSync } from 'fs';
 
-// Output to project root node-functions directory
-const OUT_DIR = '../../node-functions';
-
-interface NodeFunctionMeta {
-  name: string;
-  entry: string;
-  routes: string[];
-}
+// Output to project root dist/node-functions directory
+const OUT_DIR = '../../dist/node-functions';
 
 // Clean and create output directory
 if (existsSync(OUT_DIR)) {
@@ -17,40 +10,27 @@ if (existsSync(OUT_DIR)) {
 }
 mkdirSync(OUT_DIR, { recursive: true });
 
-// Common esbuild options
+// Common esbuild options for Node Functions
+// EdgeOne Node Functions support npm packages, so we bundle everything
 const commonOptions: esbuild.BuildOptions = {
   bundle: true,
   platform: 'node',
   target: 'node20',
   format: 'esm',
-  external: [
-    'node:*',
-    'fs',
-    'path',
-    'crypto',
-    'http',
-    'https',
-    'stream',
-    'url',
-    'util',
-    'events',
-    'buffer',
-    'querystring',
-    'net',
-    'tls',
-    'zlib',
-    'os',
-  ],
+  // Don't externalize anything - bundle all dependencies
   packages: 'bundle',
   minify: false,
   sourcemap: false,
+  // Handle Node.js built-in modules
+  external: [
+    'node:*',
+  ],
 };
 
 console.log('Building Node Functions...');
 
-const functions: NodeFunctionMeta[] = [];
-
-// Webhook handler: /send/* (Koa app with [[default]].js)
+// Build webhook handler: /send/* -> [[default]].js
+// EdgeOne uses [[default]].js for catch-all routes
 mkdirSync(`${OUT_DIR}/send`, { recursive: true });
 await esbuild.build({
   ...commonOptions,
@@ -60,14 +40,9 @@ await esbuild.build({
     js: '// EdgeOne Node Functions - Webhook Handler\n// Route: /send/*\n',
   },
 });
-functions.push({
-  name: 'webhook',
-  entry: 'send/[[default]].js',
-  routes: ['/send/*'],
-});
-console.log('✓ Webhook: node-functions/send/[[default]].js -> /send/*');
+console.log('✓ Webhook: dist/node-functions/send/[[default]].js -> /send/*');
 
-// API handler: /api/* (Koa app with [[default]].js)
+// Build API handler: /api/* -> [[default]].js
 mkdirSync(`${OUT_DIR}/api`, { recursive: true });
 await esbuild.build({
   ...commonOptions,
@@ -77,16 +52,11 @@ await esbuild.build({
     js: '// EdgeOne Node Functions - API Handler\n// Route: /api/*\n',
   },
 });
-functions.push({
-  name: 'api',
-  entry: 'api/[[default]].js',
-  routes: ['/api/*'],
-});
-console.log('✓ API: node-functions/api/[[default]].js -> /api/*');
+console.log('✓ API: dist/node-functions/api/[[default]].js -> /api/*');
 
-// Generate meta.json
-const metaPath = join(OUT_DIR, 'meta.json');
-writeFileSync(metaPath, JSON.stringify(functions, null, 2));
-console.log(`✓ meta.json (${functions.length} functions)`);
+// Note: EdgeOne Pages uses file-system routing, no meta.json needed
+// Routes are automatically generated from directory structure:
+// - /node-functions/send/[[default]].js -> /send/*
+// - /node-functions/api/[[default]].js -> /api/*
 
-console.log('\nBuild complete!');
+console.log('\nNode Functions build complete!');

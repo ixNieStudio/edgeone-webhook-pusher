@@ -7,7 +7,7 @@
     },
     "build:functions": {
       "dependsOn": ["^build"],
-      "outputs": ["../../edge-functions/**", "../../.output/node-functions/**"]
+      "outputs": ["../../dist/edge-functions/**", "../../dist/node-functions/**"]
     },
     "dev": {
       "cache": false,

@@ -1,3 +1,12 @@
+/**
+ * EdgeOne Node Functions - API Handler (Koa)
+ * Route: /api/*
+ * 
+ * This handles all /api/* routes using Koa framework.
+ * EdgeOne Node Functions support Koa - just export the app instance.
+ * No need to start HTTP server - EdgeOne handles that.
+ */
+
 import Koa from 'koa';
 import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
@@ -6,9 +15,7 @@ import { messagesRouter } from './routes/messages.js';
 import { userRouter } from './routes/user.js';
 import { authMiddleware } from './middleware/auth.js';
 
-// Create Koa application for API routes
-// This handles /api/* routes
-// Webhook routes (/{sendKey}.send) are handled by webhook.ts
+// Create Koa application
 const app = new Koa();
 const router = new Router();
 
@@ -44,20 +51,21 @@ app.use(async (ctx, next) => {
   }
 });
 
-// Protected routes (require auth)
-// Routes are relative to /api/ since this file is at node-functions/api/[[default]].js
-router.use('/channels', authMiddleware, channelsRouter.routes());
-router.use('/messages', authMiddleware, messagesRouter.routes());
-router.use('/user', authMiddleware, userRouter.routes());
-
-// Health check
+// Health check (relative to /api/)
 router.get('/health', (ctx) => {
   ctx.body = { status: 'ok', timestamp: new Date().toISOString() };
 });
+
+// Protected routes (require auth)
+// Note: Routes are relative to /api/ since this file handles /api/*
+router.use('/channels', authMiddleware, channelsRouter.routes());
+router.use('/messages', authMiddleware, messagesRouter.routes());
+router.use('/user', authMiddleware, userRouter.routes());
 
 // Use router middleware
 app.use(router.routes());
 app.use(router.allowedMethods());
 
 // Export Koa app instance for EdgeOne Node Functions
+// EdgeOne will handle HTTP server - just export the app
 export default app;
