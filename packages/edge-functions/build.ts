@@ -1,8 +1,9 @@
-import { readdirSync, statSync, mkdirSync, existsSync, rmSync, copyFileSync } from 'fs';
-import { join, relative, dirname } from 'path';
+import * as esbuild from 'esbuild';
+import { readdirSync, statSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { join, relative } from 'path';
 
 const SRC_DIR = './src';
-// Output to project root edge-functions directory (TypeScript files, EdgeOne CLI compiles them)
+// Output to project root edge-functions directory
 const OUT_DIR = '../../edge-functions';
 
 // Find all TS files in src directory
@@ -31,24 +32,27 @@ async function build() {
   mkdirSync(OUT_DIR, { recursive: true });
 
   const sourceFiles = findTsFiles(SRC_DIR);
-  console.log(`Copying ${sourceFiles.length} edge functions (TypeScript)...`);
+  console.log(`Building ${sourceFiles.length} edge functions...`);
 
   for (const srcFile of sourceFiles) {
     const relativePath = relative(SRC_DIR, srcFile);
-    const outFile = join(OUT_DIR, relativePath);
-    
-    // Ensure directory exists
-    const outDir = dirname(outFile);
-    if (!existsSync(outDir)) {
-      mkdirSync(outDir, { recursive: true });
-    }
+    const outFile = join(OUT_DIR, relativePath.replace(/\.ts$/, '.js'));
 
-    // Copy TypeScript file directly (EdgeOne CLI will compile it)
-    copyFileSync(srcFile, outFile);
-    console.log(`  ✓ ${relativePath}`);
+    await esbuild.build({
+      entryPoints: [srcFile],
+      outfile: outFile,
+      bundle: false,
+      format: 'esm',
+      target: 'es2022',
+      platform: 'browser',
+      minify: false,
+      sourcemap: false,
+    });
+
+    console.log(`  ✓ ${relativePath.replace(/\.ts$/, '.js')}`);
   }
 
-  console.log('Build complete! EdgeOne CLI will compile TypeScript files during deployment.');
+  console.log('Build complete!');
 }
 
 build().catch((err) => {

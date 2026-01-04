@@ -3,5 +3,5 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "outputDirectory": "dist",
-  "nodeVersion": "22.11.0"
+  "nodeVersion": "20.19.0"
 }
