@@ -10,7 +10,6 @@
     "clean": "rimraf ../../edge-functions"
   },
   "devDependencies": {
-    "esbuild": "^0.24.0",
     "rimraf": "^6.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
