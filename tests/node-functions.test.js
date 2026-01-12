@@ -12,8 +12,8 @@ import { join } from 'path';
 describe('Node Function Default Export', () => {
   const nodeFunctionsDir = join(process.cwd(), 'node-functions');
 
-  describe('API Handler (api/[[default]].js)', () => {
-    const filePath = join(nodeFunctionsDir, 'api', '[[default]].js');
+  describe('API Handler (v1/[[default]].js)', () => {
+    const filePath = join(nodeFunctionsDir, 'v1', '[[default]].js');
 
     it('should exist', () => {
       expect(existsSync(filePath)).toBe(true);
@@ -84,11 +84,15 @@ describe('Node Function File Structure', () => {
     expect(existsSync(join(nodeFunctionsDir, 'routes'))).toBe(true);
   });
 
-  it('should have api/[[default]].js for catch-all API routes', () => {
-    expect(existsSync(join(nodeFunctionsDir, 'api', '[[default]].js'))).toBe(true);
+  it('should have v1/[[default]].js for catch-all API routes', () => {
+    expect(existsSync(join(nodeFunctionsDir, 'v1', '[[default]].js'))).toBe(true);
   });
 
   it('should have send/[[default]].js for catch-all webhook routes', () => {
     expect(existsSync(join(nodeFunctionsDir, 'send', '[[default]].js'))).toBe(true);
+  });
+
+  it('should NOT have api/ directory (avoid conflict with edge-functions)', () => {
+    expect(existsSync(join(nodeFunctionsDir, 'api'))).toBe(false);
   });
 });

@@ -1,12 +1,8 @@
 /**
  * EdgeOne Node Functions - API Handler (Koa)
- * Route: /api/*
+ * Route: /v1/*
  *
- * All routing services consolidated in this file.
- * No HTTP Server startup - EdgeOne handles that.
- * Export the Koa app instance.
- *
- * @see https://pages.edgeone.ai/document/node-functions
+ * @see https://github.com/TencentEdgeOne/koa-template
  */
 
 import Koa from 'koa';
@@ -21,7 +17,7 @@ import { authMiddleware } from '../middleware/auth.js';
 const app = new Koa();
 const router = new Router();
 
-// Request timing middleware
+// Add some middleware
 app.use(async (ctx, next) => {
   const start = Date.now();
   await next();
@@ -46,7 +42,7 @@ app.use(async (ctx, next) => {
   await next();
 });
 
-// Error handling middleware
+// Error handling
 app.use(async (ctx, next) => {
   try {
     await next();
@@ -60,12 +56,12 @@ app.use(async (ctx, next) => {
   }
 });
 
-// Health check
-router.get('/health', (ctx) => {
+// Define routes
+router.get('/health', async (ctx) => {
   ctx.body = { status: 'ok', timestamp: new Date().toISOString() };
 });
 
-// Protected routes (require auth)
+// Protected routes
 router.use('/channels', authMiddleware, channelsRouter.routes());
 router.use('/messages', authMiddleware, messagesRouter.routes());
 router.use('/user', authMiddleware, userRouter.routes());
@@ -74,5 +70,5 @@ router.use('/user', authMiddleware, userRouter.routes());
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-// Export Koa app instance for EdgeOne Node Functions
+// Export handler
 export default app;

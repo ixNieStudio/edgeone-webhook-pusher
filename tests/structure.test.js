@@ -83,12 +83,16 @@ describe('Project Structure', () => {
       expect(existsSync(nodeFunctionsDir)).toBe(true);
     });
 
-    it('should have api/[[default]].js', () => {
-      expect(existsSync(join(nodeFunctionsDir, 'api', '[[default]].js'))).toBe(true);
+    it('should have v1/[[default]].js (API routes)', () => {
+      expect(existsSync(join(nodeFunctionsDir, 'v1', '[[default]].js'))).toBe(true);
     });
 
-    it('should have send/[[default]].js', () => {
+    it('should have send/[[default]].js (Webhook routes)', () => {
       expect(existsSync(join(nodeFunctionsDir, 'send', '[[default]].js'))).toBe(true);
+    });
+
+    it('should NOT have api/ directory (avoid conflict with edge-functions)', () => {
+      expect(existsSync(join(nodeFunctionsDir, 'api'))).toBe(false);
     });
 
     it('should have shared/ directory', () => {

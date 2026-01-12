@@ -2,14 +2,7 @@
  * EdgeOne Node Functions - Webhook Handler (Koa)
  * Route: /send/*
  *
- * Handles webhook push requests: /send/{sendKey}
- * Supports GET params, POST JSON, POST form
- *
- * All routing services consolidated in this file.
- * No HTTP Server startup - EdgeOne handles that.
- * Export the Koa app instance.
- *
- * @see https://pages.edgeone.ai/document/node-functions
+ * @see https://github.com/TencentEdgeOne/koa-template
  */
 
 import Koa from 'koa';
@@ -25,7 +18,7 @@ import { rateLimitMiddleware } from '../middleware/rateLimit.js';
 const app = new Koa();
 const router = new Router();
 
-// Request timing middleware
+// Add some middleware
 app.use(async (ctx, next) => {
   const start = Date.now();
   await next();
@@ -50,7 +43,7 @@ app.use(async (ctx, next) => {
   await next();
 });
 
-// Error handling middleware
+// Error handling
 app.use(async (ctx, next) => {
   try {
     await next();
@@ -64,10 +57,7 @@ app.use(async (ctx, next) => {
   }
 });
 
-/**
- * Webhook push endpoint: /:sendKey
- * Matches /send/{sendKey}
- */
+// Define routes
 router.all('/:sendKey', async (ctx, next) => {
   const { sendKey } = ctx.params;
 
@@ -82,7 +72,7 @@ router.all('/:sendKey', async (ctx, next) => {
     return;
   }
 
-  // Attach user to context for rate limiting
+  // Attach user to context
   ctx.state.user = user;
   ctx.state.userId = user.id;
 
@@ -128,5 +118,5 @@ router.all('/:sendKey', async (ctx, next) => {
 app.use(router.routes());
 app.use(router.allowedMethods());
 
-// Export Koa app instance for EdgeOne Node Functions
+// Export handler
 export default app;
