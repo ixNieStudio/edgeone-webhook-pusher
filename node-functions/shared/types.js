@@ -1,47 +1,7 @@
 /**
- * Error codes for the push service
+ * Re-export error codes from unified error-codes.js
  */
-export const ErrorCodes = {
-  // Validation errors (400xx)
-  MISSING_TITLE: 40001,
-  INVALID_PARAM: 40002,
-  INVALID_CONFIG: 40003,
-
-  // Authentication errors (401xx)
-  INVALID_TOKEN: 40101,
-  TOKEN_REQUIRED: 40102,
-
-  // Not found errors (404xx)
-  KEY_NOT_FOUND: 40401,
-  MESSAGE_NOT_FOUND: 40402,
-  NO_SUBSCRIBERS: 40403,
-  OPENID_NOT_FOUND: 40404,
-
-  // Rate limit errors (429xx)
-  RATE_LIMIT_EXCEEDED: 42901,
-
-  // Internal errors (500xx)
-  INTERNAL_ERROR: 50001,
-  WECHAT_API_ERROR: 50002,
-};
-
-/**
- * Error messages corresponding to error codes
- */
-export const ErrorMessages = {
-  [ErrorCodes.MISSING_TITLE]: 'Message title is required',
-  [ErrorCodes.INVALID_PARAM]: 'Invalid parameter',
-  [ErrorCodes.INVALID_CONFIG]: 'Invalid configuration',
-  [ErrorCodes.INVALID_TOKEN]: 'Invalid admin token',
-  [ErrorCodes.TOKEN_REQUIRED]: 'Admin token is required',
-  [ErrorCodes.KEY_NOT_FOUND]: 'SendKey or TopicKey not found',
-  [ErrorCodes.MESSAGE_NOT_FOUND]: 'Message not found',
-  [ErrorCodes.NO_SUBSCRIBERS]: 'Topic has no subscribers',
-  [ErrorCodes.OPENID_NOT_FOUND]: 'OpenID not found',
-  [ErrorCodes.RATE_LIMIT_EXCEEDED]: 'Rate limit exceeded',
-  [ErrorCodes.INTERNAL_ERROR]: 'Internal server error',
-  [ErrorCodes.WECHAT_API_ERROR]: 'WeChat API error',
-};
+export { ErrorCodes, ErrorMessages } from './error-codes.js';
 
 /**
  * Message types

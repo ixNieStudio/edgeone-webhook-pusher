@@ -13,7 +13,7 @@
 import Koa from 'koa';
 import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, ErrorMessages, errorResponse, getHttpStatus } from '../shared/error-codes.js';
 import { sanitizeInput } from '../shared/utils.js';
 import { pushService } from '../services/push.js';
 
@@ -53,33 +53,9 @@ app.use(async (ctx, next) => {
   } catch (err) {
     console.error('Webhook error:', err);
     ctx.status = err.status || 500;
-    ctx.body = {
-      code: err.code || ErrorCodes.INTERNAL_ERROR,
-      message: err.message || 'Internal server error',
-      data: null,
-    };
+    ctx.body = errorResponse(err.code || ErrorCodes.INTERNAL_ERROR, err.message);
   }
 });
-
-/**
- * Map error code to HTTP status
- */
-function getHttpStatus(errorCode) {
-  switch (errorCode) {
-    case ErrorCodes.KEY_NOT_FOUND:
-      return 404;
-    case ErrorCodes.RATE_LIMIT_EXCEEDED:
-      return 429;
-    case ErrorCodes.MISSING_TITLE:
-    case ErrorCodes.INVALID_PARAM:
-      return 400;
-    case ErrorCodes.INVALID_CONFIG:
-    case ErrorCodes.OPENID_NOT_FOUND:
-      return 500;
-    default:
-      return 500;
-  }
-}
 
 /**
  * Handle push request
@@ -95,11 +71,7 @@ async function handlePush(ctx, sendKey) {
   // Validate required fields
   if (!title) {
     ctx.status = 400;
-    ctx.body = {
-      code: ErrorCodes.MISSING_TITLE,
-      message: ErrorMessages[ErrorCodes.MISSING_TITLE],
-      data: null,
-    };
+    ctx.body = errorResponse(ErrorCodes.MISSING_TITLE);
     return;
   }
 
@@ -112,11 +84,7 @@ async function handlePush(ctx, sendKey) {
 
   if (!result.success) {
     ctx.status = getHttpStatus(result.error);
-    ctx.body = {
-      code: result.error,
-      message: ErrorMessages[result.error] || 'Push failed',
-      data: null,
-    };
+    ctx.body = errorResponse(result.error);
     return;
   }
 

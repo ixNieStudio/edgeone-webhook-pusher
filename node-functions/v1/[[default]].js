@@ -21,6 +21,7 @@ import { registerStatsRoutes } from '../routes/stats.js';
 import { registerBindRoutes } from '../routes/bind.js';
 import { registerSubscribeRoutes } from '../routes/subscribe.js';
 import { registerWeChatMsgRoutes } from '../routes/wechat-msg.js';
+import { ErrorCodes, errorResponse } from '../shared/error-codes.js';
 
 // Create Koa application
 const app = new Koa();
@@ -58,13 +59,7 @@ app.use(async (ctx, next) => {
   } catch (err) {
     console.error('Server error:', err);
     ctx.status = err.status || 500;
-    ctx.body = {
-      success: false,
-      error: {
-        code: err.code || 50001,
-        message: err.message || 'Internal server error',
-      },
-    };
+    ctx.body = errorResponse(err.code || ErrorCodes.INTERNAL_ERROR, err.message);
   }
 });
 
