@@ -27,21 +27,21 @@
     "clean": "rimraf dist .nuxt .output"
   },
   "dependencies": {
-    "nuxt": "^4.2.2",
-    "vue": "^3.5.26",
-    "vue-router": "^4.6.4",
-    "tdesign-vue-next": "^1.10.5",
-    "pinia": "^2.3.1",
+    "@koa/router": "^14.0.0",
     "@pinia/nuxt": "^0.9.0",
     "koa": "^3.0.1",
-    "@koa/router": "^14.0.0",
-    "koa-bodyparser": "^4.4.1"
+    "koa-bodyparser": "^4.4.1",
+    "nuxt": "^4.2.2",
+    "pinia": "^2.3.1",
+    "tdesign-vue-next": "^1.18.0",
+    "vue": "^3.5.26",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "unplugin-vue-components": "^28.5.0",
-    "unplugin-auto-import": "^19.2.0",
+    "fast-check": "^3.23.2",
     "rimraf": "^6.0.1",
-    "vitest": "^2.1.8",
-    "fast-check": "^3.23.2"
+    "unplugin-auto-import": "^19.2.0",
+    "unplugin-vue-components": "^28.5.0",
+    "vitest": "^2.1.8"
   }
 }
