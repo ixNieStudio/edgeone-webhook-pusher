@@ -10,7 +10,7 @@
 
 import { messageService } from '../services/message.js';
 import { withAdminAuth } from '../middleware/admin-auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, successResponse, getHttpStatus } from '../shared/error-codes.js';
 
 /**
  * Create JSON response
@@ -26,16 +26,10 @@ function jsonResponse(status, data) {
 }
 
 /**
- * Create error response
+ * Create error response with unified format
  */
-function errorResponse(status, code, message) {
-  return jsonResponse(status, {
-    success: false,
-    error: {
-      code,
-      message: message || ErrorMessages[code] || 'Unknown error',
-    },
-  });
+function errorResponse(code, message) {
+  return jsonResponse(getHttpStatus(code), createErrorBody(code, message));
 }
 
 /**
@@ -63,15 +57,15 @@ async function handleList(context) {
 
     // Validate params
     if (type && type !== 'single' && type !== 'topic') {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'type must be "single" or "topic"');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'type must be "single" or "topic"');
     }
 
     if (page < 1) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'page must be >= 1');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'page must be >= 1');
     }
 
     if (pageSize < 1 || pageSize > 100) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'pageSize must be between 1 and 100');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'pageSize must be between 1 and 100');
     }
 
     const result = await messageService.list({ type, page, pageSize });
@@ -88,7 +82,7 @@ async function handleList(context) {
     });
   } catch (error) {
     console.error('List messages error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -99,7 +93,7 @@ async function handleGet(context, id) {
   try {
     const message = await messageService.get(id);
     if (!message) {
-      return errorResponse(404, ErrorCodes.MESSAGE_NOT_FOUND, 'Message not found');
+      return errorResponse(ErrorCodes.MESSAGE_NOT_FOUND, 'Message not found');
     }
 
     return jsonResponse(200, {
@@ -108,7 +102,7 @@ async function handleGet(context, id) {
     });
   } catch (error) {
     console.error('Get message error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -138,7 +132,7 @@ export async function onRequest(context) {
 
     // Only GET method allowed
     if (request.method !== 'GET') {
-      return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
 
     // Collection route: /api/messages

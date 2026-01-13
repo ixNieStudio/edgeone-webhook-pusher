@@ -14,7 +14,7 @@
 import { sendkeyService } from '../services/sendkey.js';
 import { openidService } from '../services/openid.js';
 import { withAdminAuth } from '../middleware/admin-auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, successResponse, getHttpStatus } from '../shared/error-codes.js';
 
 /**
  * Create JSON response
@@ -30,16 +30,10 @@ function jsonResponse(status, data) {
 }
 
 /**
- * Create error response
+ * Create error response with unified format
  */
-function errorResponse(status, code, message) {
-  return jsonResponse(status, {
-    success: false,
-    error: {
-      code,
-      message: message || ErrorMessages[code] || 'Unknown error',
-    },
-  });
+function errorResponse(code, message) {
+  return jsonResponse(getHttpStatus(code), createErrorBody(code, message));
 }
 
 /**
@@ -66,7 +60,7 @@ async function handleList(context) {
     });
   } catch (error) {
     console.error('List sendkeys error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -81,23 +75,23 @@ async function handleCreate(context) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { name, openIdRef } = body;
 
     if (!name) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'name is required');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'name is required');
     }
 
     if (!openIdRef) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'openIdRef is required');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'openIdRef is required');
     }
 
     // Verify OpenID exists
     const openid = await openidService.get(openIdRef);
     if (!openid) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Referenced OpenID does not exist');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Referenced OpenID does not exist');
     }
 
     const data = await sendkeyService.create(name, openIdRef);
@@ -110,7 +104,7 @@ async function handleCreate(context) {
     });
   } catch (error) {
     console.error('Create sendkey error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -121,7 +115,7 @@ async function handleGet(context, id) {
   try {
     const data = await sendkeyService.get(id);
     if (!data) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'SendKey not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'SendKey not found');
     }
 
     // Mask key in response
@@ -132,7 +126,7 @@ async function handleGet(context, id) {
     });
   } catch (error) {
     console.error('Get sendkey error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -147,7 +141,7 @@ async function handleUpdate(context, id) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { name, openIdRef } = body;
@@ -156,14 +150,14 @@ async function handleUpdate(context, id) {
     if (openIdRef) {
       const openid = await openidService.get(openIdRef);
       if (!openid) {
-        return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Referenced OpenID does not exist');
+        return errorResponse(ErrorCodes.INVALID_PARAM, 'Referenced OpenID does not exist');
       }
     }
 
     const data = await sendkeyService.update(id, { name, openIdRef });
 
     if (!data) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'SendKey not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'SendKey not found');
     }
 
     // Mask key in response
@@ -174,7 +168,7 @@ async function handleUpdate(context, id) {
     });
   } catch (error) {
     console.error('Update sendkey error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -185,7 +179,7 @@ async function handleDelete(context, id) {
   try {
     const deleted = await sendkeyService.delete(id);
     if (!deleted) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'SendKey not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'SendKey not found');
     }
 
     return jsonResponse(200, {
@@ -194,7 +188,7 @@ async function handleDelete(context, id) {
     });
   } catch (error) {
     console.error('Delete sendkey error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -230,7 +224,7 @@ export async function onRequest(context) {
         case 'POST':
           return handleCreate(ctx);
         default:
-          return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+          return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
       }
     }
 
@@ -243,7 +237,7 @@ export async function onRequest(context) {
       case 'DELETE':
         return handleDelete(ctx, id);
       default:
-        return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+        return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
   };
 

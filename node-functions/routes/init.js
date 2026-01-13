@@ -7,7 +7,7 @@
  */
 
 import { authService } from '../services/auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, successResponse, getHttpStatus } from '../shared/error-codes.js';
 
 /**
  * Create JSON response
@@ -26,20 +26,10 @@ function jsonResponse(status, data) {
 }
 
 /**
- * Create error response
- * @param {number} status - HTTP status code
- * @param {number} code - Error code
- * @param {string} [message] - Error message
- * @returns {Response}
+ * Create error response with unified format
  */
-function errorResponse(status, code, message) {
-  return jsonResponse(status, {
-    success: false,
-    error: {
-      code,
-      message: message || ErrorMessages[code] || 'Unknown error',
-    },
-  });
+function errorResponse(code, message) {
+  return jsonResponse(getHttpStatus(code), createErrorBody(code, message));
 }
 
 /**
@@ -55,7 +45,7 @@ export async function handleGetStatus(context) {
     });
   } catch (error) {
     console.error('Get init status error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -70,7 +60,7 @@ export async function handleInit(context) {
     // Check if already initialized
     const isInit = await authService.isInitialized();
     if (isInit) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Application is already initialized');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Application is already initialized');
     }
 
     // Parse optional WeChat config from body
@@ -98,7 +88,7 @@ export async function handleInit(context) {
     });
   } catch (error) {
     console.error('Init error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -133,5 +123,5 @@ export async function onRequest(context) {
   }
 
   // Method not allowed
-  return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+  return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
 }
