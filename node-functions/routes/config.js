@@ -10,7 +10,7 @@
 
 import { configService } from '../services/config.js';
 import { withAdminAuth } from '../middleware/admin-auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, successResponse, getHttpStatus } from '../shared/error-codes.js';
 
 /**
  * Create JSON response
@@ -29,20 +29,10 @@ function jsonResponse(status, data) {
 }
 
 /**
- * Create error response
- * @param {number} status - HTTP status code
- * @param {number} code - Error code
- * @param {string} [message] - Error message
- * @returns {Response}
+ * Create error response with unified format
  */
-function errorResponse(status, code, message) {
-  return jsonResponse(status, {
-    success: false,
-    error: {
-      code,
-      message: message || ErrorMessages[code] || 'Unknown error',
-    },
-  });
+function errorResponse(code, message) {
+  return jsonResponse(getHttpStatus(code), createErrorBody(code, message));
 }
 
 /**
@@ -52,7 +42,7 @@ async function handleGetConfig(context) {
   try {
     const config = await configService.getConfig();
     if (!config) {
-      return errorResponse(404, ErrorCodes.INVALID_CONFIG, 'Configuration not found');
+      return errorResponse(ErrorCodes.INVALID_CONFIG, 'Configuration not found');
     }
 
     // Mask sensitive fields
@@ -64,7 +54,7 @@ async function handleGetConfig(context) {
     });
   } catch (error) {
     console.error('Get config error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -80,12 +70,12 @@ async function handleUpdateConfig(context) {
     try {
       updates = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     // Validate updates
     if (!updates || typeof updates !== 'object') {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Request body must be an object');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Request body must be an object');
     }
 
     // Update config
@@ -100,7 +90,7 @@ async function handleUpdateConfig(context) {
     });
   } catch (error) {
     console.error('Update config error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -130,7 +120,7 @@ export async function onRequest(context) {
       case 'PUT':
         return handleUpdateConfig(ctx);
       default:
-        return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+        return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
   };
 

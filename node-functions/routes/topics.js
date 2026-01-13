@@ -17,7 +17,7 @@
 import { topicService } from '../services/topic.js';
 import { openidService } from '../services/openid.js';
 import { withAdminAuth } from '../middleware/admin-auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, successResponse, getHttpStatus } from '../shared/error-codes.js';
 
 /**
  * Create JSON response
@@ -33,16 +33,10 @@ function jsonResponse(status, data) {
 }
 
 /**
- * Create error response
+ * Create error response with unified format
  */
-function errorResponse(status, code, message) {
-  return jsonResponse(status, {
-    success: false,
-    error: {
-      code,
-      message: message || ErrorMessages[code] || 'Unknown error',
-    },
-  });
+function errorResponse(code, message) {
+  return jsonResponse(getHttpStatus(code), createErrorBody(code, message));
 }
 
 /**
@@ -93,7 +87,7 @@ async function handleList(context) {
     });
   } catch (error) {
     console.error('List topics error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -108,13 +102,13 @@ async function handleCreate(context) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { name } = body;
 
     if (!name) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'name is required');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'name is required');
     }
 
     const data = await topicService.create(name);
@@ -127,7 +121,7 @@ async function handleCreate(context) {
     });
   } catch (error) {
     console.error('Create topic error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -138,7 +132,7 @@ async function handleGet(context, id) {
   try {
     const data = await topicService.get(id);
     if (!data) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
     }
 
     // Mask key in response
@@ -149,7 +143,7 @@ async function handleGet(context, id) {
     });
   } catch (error) {
     console.error('Get topic error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -164,14 +158,14 @@ async function handleUpdate(context, id) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { name } = body;
     const data = await topicService.update(id, { name });
 
     if (!data) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
     }
 
     // Mask key in response
@@ -182,7 +176,7 @@ async function handleUpdate(context, id) {
     });
   } catch (error) {
     console.error('Update topic error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -193,7 +187,7 @@ async function handleDelete(context, id) {
   try {
     const deleted = await topicService.delete(id);
     if (!deleted) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
     }
 
     return jsonResponse(200, {
@@ -202,7 +196,7 @@ async function handleDelete(context, id) {
     });
   } catch (error) {
     console.error('Delete topic error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -217,25 +211,25 @@ async function handleSubscribe(context, id) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { openIdRef } = body;
 
     if (!openIdRef) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'openIdRef is required');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'openIdRef is required');
     }
 
     // Verify topic exists
     const topic = await topicService.get(id);
     if (!topic) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
     }
 
     // Verify OpenID exists
     const openid = await openidService.get(openIdRef);
     if (!openid) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Referenced OpenID does not exist');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Referenced OpenID does not exist');
     }
 
     await topicService.subscribe(id, openIdRef);
@@ -246,7 +240,7 @@ async function handleSubscribe(context, id) {
     });
   } catch (error) {
     console.error('Subscribe error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -258,7 +252,7 @@ async function handleUnsubscribe(context, id, openIdRef) {
     // Verify topic exists
     const topic = await topicService.get(id);
     if (!topic) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
     }
 
     await topicService.unsubscribe(id, openIdRef);
@@ -269,7 +263,7 @@ async function handleUnsubscribe(context, id, openIdRef) {
     });
   } catch (error) {
     console.error('Unsubscribe error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -281,7 +275,7 @@ async function handleGetSubscribers(context, id) {
     // Verify topic exists
     const topic = await topicService.get(id);
     if (!topic) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'Topic not found');
     }
 
     const subscribers = await topicService.getSubscribers(id);
@@ -292,7 +286,7 @@ async function handleGetSubscribers(context, id) {
     });
   } catch (error) {
     console.error('Get subscribers error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -328,7 +322,7 @@ export async function onRequest(context) {
         case 'POST':
           return handleCreate(ctx);
         default:
-          return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+          return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
       }
     }
 
@@ -337,21 +331,21 @@ export async function onRequest(context) {
       if (request.method === 'POST') {
         return handleSubscribe(ctx, id);
       }
-      return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
 
     if (action === 'unsubscribe') {
       if (request.method === 'DELETE') {
         return handleUnsubscribe(ctx, id, subId);
       }
-      return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
 
     if (action === 'subscribers') {
       if (request.method === 'GET') {
         return handleGetSubscribers(ctx, id);
       }
-      return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
 
     // Item routes: /api/topics/:id
@@ -363,7 +357,7 @@ export async function onRequest(context) {
       case 'DELETE':
         return handleDelete(ctx, id);
       default:
-        return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+        return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
   };
 

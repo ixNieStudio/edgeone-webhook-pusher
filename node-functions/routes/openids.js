@@ -15,7 +15,7 @@ import { openidService } from '../services/openid.js';
 import { sendkeyService } from '../services/sendkey.js';
 import { topicService } from '../services/topic.js';
 import { withAdminAuth } from '../middleware/admin-auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, successResponse, getHttpStatus } from '../shared/error-codes.js';
 
 /**
  * Create JSON response
@@ -31,16 +31,10 @@ function jsonResponse(status, data) {
 }
 
 /**
- * Create error response
+ * Create error response with unified format
  */
-function errorResponse(status, code, message) {
-  return jsonResponse(status, {
-    success: false,
-    error: {
-      code,
-      message: message || ErrorMessages[code] || 'Unknown error',
-    },
-  });
+function errorResponse(code, message) {
+  return jsonResponse(getHttpStatus(code), createErrorBody(code, message));
 }
 
 /**
@@ -65,7 +59,7 @@ async function handleList(context) {
     });
   } catch (error) {
     console.error('List openids error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -80,13 +74,13 @@ async function handleCreate(context) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { openId, name } = body;
 
     if (!openId) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'openId is required');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'openId is required');
     }
 
     const data = await openidService.create(openId, name);
@@ -96,10 +90,10 @@ async function handleCreate(context) {
     });
   } catch (error) {
     if (error.message === 'OpenID already exists') {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, error.message);
+      return errorResponse(ErrorCodes.INVALID_PARAM, error.message);
     }
     console.error('Create openid error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -110,7 +104,7 @@ async function handleGet(context, id) {
   try {
     const data = await openidService.get(id);
     if (!data) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'OpenID not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'OpenID not found');
     }
     return jsonResponse(200, {
       success: true,
@@ -118,7 +112,7 @@ async function handleGet(context, id) {
     });
   } catch (error) {
     console.error('Get openid error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -133,14 +127,14 @@ async function handleUpdate(context, id) {
     try {
       body = await request.json();
     } catch {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
+      return errorResponse(ErrorCodes.INVALID_PARAM, 'Invalid JSON body');
     }
 
     const { name } = body;
     const data = await openidService.update(id, { name });
 
     if (!data) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'OpenID not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'OpenID not found');
     }
 
     return jsonResponse(200, {
@@ -149,7 +143,7 @@ async function handleUpdate(context, id) {
     });
   } catch (error) {
     console.error('Update openid error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -165,14 +159,14 @@ async function handleDelete(context, id) {
     });
 
     if (refs.referenced) {
-      return errorResponse(400, ErrorCodes.INVALID_PARAM, 
+      return errorResponse(ErrorCodes.INVALID_PARAM, 
         `Cannot delete: OpenID is referenced by ${refs.sendkeys.length} SendKey(s) and ${refs.topics.length} Topic(s)`
       );
     }
 
     const deleted = await openidService.delete(id);
     if (!deleted) {
-      return errorResponse(404, ErrorCodes.KEY_NOT_FOUND, 'OpenID not found');
+      return errorResponse(ErrorCodes.KEY_NOT_FOUND, 'OpenID not found');
     }
 
     return jsonResponse(200, {
@@ -181,7 +175,7 @@ async function handleDelete(context, id) {
     });
   } catch (error) {
     console.error('Delete openid error:', error);
-    return errorResponse(500, ErrorCodes.INTERNAL_ERROR, error.message);
+    return errorResponse(ErrorCodes.INTERNAL_ERROR, error.message);
   }
 }
 
@@ -217,7 +211,7 @@ export async function onRequest(context) {
         case 'POST':
           return handleCreate(ctx);
         default:
-          return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+          return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
       }
     }
 
@@ -230,7 +224,7 @@ export async function onRequest(context) {
       case 'DELETE':
         return handleDelete(ctx, id);
       default:
-        return errorResponse(405, ErrorCodes.INVALID_PARAM, 'Method not allowed');
+        return errorResponse(ErrorCodes.INVALID_PARAM, 'Method not allowed');
     }
   };
 
