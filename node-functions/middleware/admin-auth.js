@@ -7,26 +7,19 @@
  */
 
 import { authService } from '../services/auth.js';
-import { ErrorCodes, ErrorMessages } from '../shared/types.js';
+import { ErrorCodes, errorResponse as createErrorBody, getHttpStatus } from '../shared/error-codes.js';
 
 /**
- * Create JSON error response
- * @param {number} status - HTTP status code
+ * Create JSON error response with unified format
  * @param {number} code - Error code
  * @param {string} [message] - Error message
  * @returns {Response}
  */
-function errorResponse(status, code, message) {
+function errorResponse(code, message) {
   return new Response(
-    JSON.stringify({
-      success: false,
-      error: {
-        code,
-        message: message || ErrorMessages[code] || 'Unknown error',
-      },
-    }),
+    JSON.stringify(createErrorBody(code, message)),
     {
-      status,
+      status: getHttpStatus(code),
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'Access-Control-Allow-Origin': '*',
@@ -78,14 +71,14 @@ export async function adminAuthMiddleware(context) {
   const token = extractToken(request);
 
   if (!token) {
-    return errorResponse(401, ErrorCodes.TOKEN_REQUIRED);
+    return errorResponse(ErrorCodes.TOKEN_REQUIRED);
   }
 
   // Validate token
   const isValid = await authService.validateAdminToken(token);
 
   if (!isValid) {
-    return errorResponse(401, ErrorCodes.INVALID_TOKEN);
+    return errorResponse(ErrorCodes.INVALID_TOKEN);
   }
 
   // Auth successful, continue to handler

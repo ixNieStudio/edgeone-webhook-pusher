@@ -143,7 +143,7 @@ describe('API Authentication Properties', () => {
 
       expect(result).not.toBeNull();
       const body = await result.json();
-      expect(body.error.code).toBe(ErrorCodes.TOKEN_REQUIRED);
+      expect(body.code).toBe(ErrorCodes.TOKEN_REQUIRED);
     });
 
     it('should reject requests with invalid token', async () => {
@@ -165,7 +165,7 @@ describe('API Authentication Properties', () => {
           }
 
           const body = await result.json();
-          return body.error.code === ErrorCodes.INVALID_TOKEN || body.error.code === ErrorCodes.TOKEN_REQUIRED;
+          return body.code === ErrorCodes.INVALID_TOKEN || body.code === ErrorCodes.TOKEN_REQUIRED;
         }),
         { numRuns: 20 }
       );

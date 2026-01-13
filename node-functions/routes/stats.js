@@ -8,7 +8,7 @@
 import { sendkeyService } from '../services/sendkey.js';
 import { topicService } from '../services/topic.js';
 import { messageService } from '../services/message.js';
-import { success } from '../shared/utils.js';
+import { successResponse } from '../shared/error-codes.js';
 
 /**
  * Register stats routes
@@ -34,7 +34,7 @@ export function registerStatsRoutes(router) {
       createdAt: msg.createdAt,
     }));
 
-    ctx.body = success({
+    ctx.body = successResponse({
       sendKeyCount: sendKeys.length,
       topicCount: topics.length,
       messageCount: messagesResult.total,
