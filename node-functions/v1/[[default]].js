@@ -67,11 +67,17 @@ app.use(async (ctx, next) => {
  * Convert Koa context to EdgeOne-style context for route handlers
  */
 function createEdgeContext(ctx) {
+  // Create a Headers-like object with get method
+  const headers = {
+    ...ctx.headers,
+    get: (name) => ctx.headers[name.toLowerCase()],
+  };
+  
   return {
     request: {
       method: ctx.method,
       url: ctx.href,
-      headers: ctx.headers,
+      headers,
       json: async () => ctx.request.body,
       text: async () => JSON.stringify(ctx.request.body || {}),
     },
