@@ -162,3 +162,20 @@ export function parseWebhookPath(path) {
     key: match[1],
   };
 }
+
+
+/**
+ * Sanitize user input to prevent XSS and injection attacks
+ * @param {string} input
+ * @returns {string}
+ */
+export function sanitizeInput(input) {
+  if (!input || typeof input !== 'string') return '';
+  // Basic HTML entity encoding for common dangerous characters
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}

@@ -1,7 +1,7 @@
 /**
  * EdgeOne Node Functions - API Handler (Koa)
  * Route: /v1/*
- * Feature: multi-tenant-refactor
+ * Feature: system-restructure
  *
  * @see https://github.com/TencentEdgeOne/koa-template
  */
@@ -13,13 +13,10 @@ import bodyParser from 'koa-bodyparser';
 // Import route handlers
 import { onRequest as initHandler } from '../routes/init.js';
 import { onRequest as configHandler } from '../routes/config.js';
+import { onRequest as channelsHandler } from '../routes/channels.js';
+import { onRequest as appsHandler } from '../routes/apps.js';
 import { onRequest as openidsHandler } from '../routes/openids.js';
-import { onRequest as sendkeysHandler } from '../routes/sendkeys.js';
-import { onRequest as topicsHandler } from '../routes/topics.js';
 import { onRequest as messagesHandler } from '../routes/messages.js';
-import { registerStatsRoutes } from '../routes/stats.js';
-import { registerBindRoutes } from '../routes/bind.js';
-import { registerSubscribeRoutes } from '../routes/subscribe.js';
 import { registerWeChatMsgRoutes } from '../routes/wechat-msg.js';
 import { ErrorCodes, errorResponse } from '../shared/error-codes.js';
 
@@ -118,42 +115,30 @@ router.post('/init', wrapHandler(initHandler));
 router.get('/config', wrapHandler(configHandler));
 router.put('/config', wrapHandler(configHandler));
 
-// OpenID routes (auth required - handled by route)
-router.get('/openids', wrapHandler(openidsHandler));
-router.post('/openids', wrapHandler(openidsHandler));
-router.get('/openids/:id', wrapHandler(openidsHandler));
-router.put('/openids/:id', wrapHandler(openidsHandler));
-router.delete('/openids/:id', wrapHandler(openidsHandler));
+// Channel routes (auth required - handled by route)
+router.get('/channels', wrapHandler(channelsHandler));
+router.post('/channels', wrapHandler(channelsHandler));
+router.get('/channels/:id', wrapHandler(channelsHandler));
+router.put('/channels/:id', wrapHandler(channelsHandler));
+router.delete('/channels/:id', wrapHandler(channelsHandler));
 
-// SendKey routes (auth required - handled by route)
-router.get('/sendkeys', wrapHandler(sendkeysHandler));
-router.post('/sendkeys', wrapHandler(sendkeysHandler));
-router.get('/sendkeys/:id', wrapHandler(sendkeysHandler));
-router.put('/sendkeys/:id', wrapHandler(sendkeysHandler));
-router.delete('/sendkeys/:id', wrapHandler(sendkeysHandler));
+// App routes (auth required - handled by route)
+router.get('/apps', wrapHandler(appsHandler));
+router.post('/apps', wrapHandler(appsHandler));
+router.get('/apps/:id', wrapHandler(appsHandler));
+router.put('/apps/:id', wrapHandler(appsHandler));
+router.delete('/apps/:id', wrapHandler(appsHandler));
 
-// Topic routes (auth required - handled by route)
-router.get('/topics', wrapHandler(topicsHandler));
-router.post('/topics', wrapHandler(topicsHandler));
-router.get('/topics/:id', wrapHandler(topicsHandler));
-router.put('/topics/:id', wrapHandler(topicsHandler));
-router.delete('/topics/:id', wrapHandler(topicsHandler));
-router.post('/topics/:id/subscribe', wrapHandler(topicsHandler));
-router.delete('/topics/:id/subscribe/:openIdRef', wrapHandler(topicsHandler));
-router.get('/topics/:id/subscribers', wrapHandler(topicsHandler));
+// OpenID routes (nested under apps - auth required)
+router.get('/apps/:appId/openids', wrapHandler(openidsHandler));
+router.post('/apps/:appId/openids', wrapHandler(openidsHandler));
+router.get('/apps/:appId/openids/:id', wrapHandler(openidsHandler));
+router.put('/apps/:appId/openids/:id', wrapHandler(openidsHandler));
+router.delete('/apps/:appId/openids/:id', wrapHandler(openidsHandler));
 
 // Message routes (auth required - handled by route)
 router.get('/messages', wrapHandler(messagesHandler));
 router.get('/messages/:id', wrapHandler(messagesHandler));
-
-// Register stats routes
-registerStatsRoutes(router);
-
-// Register bind routes (no auth - public OAuth flow)
-registerBindRoutes(router);
-
-// Register subscribe routes (no auth - public OAuth flow)
-registerSubscribeRoutes(router);
 
 // Register WeChat message routes (no auth - public callback)
 registerWeChatMsgRoutes(router);

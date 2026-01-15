@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "../.edgeone/node-functions",
+    "rootDir": ".",
+    "types": ["node"],
+    "lib": ["ES2020"]
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["node_modules"]
+}
