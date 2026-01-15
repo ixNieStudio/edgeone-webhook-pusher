@@ -181,12 +181,19 @@ yarn install
 ### 本地开发
 
 ```bash
-# 启动开发服务器
+# 完整调试（前端 + Node Functions + Edge Functions + KV）
+yarn dev:edgeone
+
+# 仅前端开发
 yarn dev
 
 # 运行测试
 yarn test
 ```
+
+访问 `http://localhost:8088` 进行调试。
+
+详细说明参见 [LOCAL_DEVELOPMENT.md](./LOCAL_DEVELOPMENT.md)
 
 ### 部署
 
@@ -414,6 +421,12 @@ const keys = await sendkeysKV.listAll('sk:');
 - **包管理**: Yarn
 
 ## 更新日志
+
+### 2026-01-15
+
+- 添加 EdgeOne CLI 本地调试支持 (`yarn dev:edgeone`)
+- 配置 `depd` 为外部模块，消除 esbuild 警告
+- 更新本地开发文档
 
 ### 2026-01-14
 

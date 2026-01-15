@@ -5,11 +5,30 @@
  * 架构说明：
  * Node Functions 无法直接访问 EdgeOne KV，需要通过 Edge Functions 代理
  * Edge Functions 位于 edge-functions/api/kv/ 目录
+ * 
+ * 本地调试：
+ * edgeone pages dev 会在 8088 端口同时运行 Edge Functions 和 Node Functions
+ * KV 存储会被自动模拟，无需额外配置
+ * 如需使用远程 KV，运行 edgeone pages link 关联项目
  */
 
 // Base URL for KV API (Edge Functions)
-// Default to production domain if KV_BASE_URL is not set
-const KV_BASE_URL = process.env.KV_BASE_URL || 'https://webhook-pusher.ixnie.cn';
+// 本地调试时使用 localhost:8088，生产环境使用相对路径或完整域名
+function getDefaultBaseUrl() {
+  // 检测是否在本地开发环境
+  if (typeof process !== 'undefined' && process.env) {
+    // 优先使用环境变量
+    if (process.env.KV_BASE_URL) {
+      return process.env.KV_BASE_URL;
+    }
+    // 本地开发环境标识
+    if (process.env.NODE_ENV === 'development' || process.env.EDGEONE_LOCAL === 'true') {
+      return 'http://localhost:8088';
+    }
+  }
+  // 生产环境：使用空字符串表示相对路径（同域请求）
+  return '';
+}
 
 // Store for dynamic base URL (set from request context)
 let dynamicBaseUrl = null;
@@ -27,7 +46,7 @@ export function setKVBaseUrl(url) {
  * @returns {string}
  */
 function getBaseUrl() {
-  return dynamicBaseUrl || KV_BASE_URL;
+  return dynamicBaseUrl || getDefaultBaseUrl();
 }
 
 /**

@@ -11,6 +11,10 @@ dist/
 .nitro/
 .cache/
 
+# Auto-generated type declarations
+app/auto-imports.d.ts
+app/components.d.ts
+
 # IDE
 .vscode/
 !.vscode/extensions.json
@@ -28,7 +32,6 @@ dist/
 # Environment
 .env
 .env.*
-!.env.example
 
 # OS
 .DS_Store
@@ -72,3 +75,10 @@ pnpm-lock.yaml
 *.pid
 *.seed
 *.pid.lock
+
+# Tencent Cloud EdgeOne
+.env
+.edgeone/*
+!.edgeone/project.json
+.tef_dist/*
+  

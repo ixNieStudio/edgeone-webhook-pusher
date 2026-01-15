@@ -12,12 +12,9 @@ export default defineNuxtConfig({
   // SPA mode
   ssr: false,
 
-  // Route rules - bypass serverless routes
-  routeRules: {
-    '/api/**': { proxy: { to: '/api/**' } },
-    '/v1/**': { proxy: { to: '/v1/**' } },
-    '/send/**': { proxy: { to: '/send/**' } },
-  },
+  // Route rules - empty for SPA mode
+  // EdgeOne CLI handles API routes (/v1/*, /send/*, /topic/*) via node-functions
+  routeRules: {},
 
   // Output configuration
   nitro: {

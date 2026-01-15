@@ -3,5 +3,11 @@
   "buildCommand": "yarn build",
   "installCommand": "yarn install",
   "outputDirectory": "dist",
-  "nodeVersion": "22.17.1"
+  "nodeVersion": "22.17.1",
+  "devCommand": "yarn dev",
+  "node-functions": {
+    "external_node_modules": [
+      "depd"
+    ]
+  }
 }

@@ -19,6 +19,7 @@
   },
   "scripts": {
     "dev": "nuxt dev",
+    "dev:edgeone": "KV_BASE_URL=http://localhost:8088 edgeone pages dev",
     "build": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
