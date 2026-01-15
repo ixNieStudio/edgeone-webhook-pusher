@@ -21,6 +21,7 @@ import {
   appsRouter,
   openidsRouter,
   messagesRouter,
+  statsRouter,
   wechatMsgRouter,
 } from '../routes/index.js';
 
@@ -91,6 +92,9 @@ router.use(openidsRouter.allowedMethods());
 
 router.use(messagesRouter.routes());
 router.use(messagesRouter.allowedMethods());
+
+router.use(statsRouter.routes());
+router.use(statsRouter.allowedMethods());
 
 router.use(wechatMsgRouter.routes());
 router.use(wechatMsgRouter.allowedMethods());

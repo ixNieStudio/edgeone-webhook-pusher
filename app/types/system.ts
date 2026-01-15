@@ -18,3 +18,25 @@ export interface SystemConfig {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * 初始化状态
+ */
+export interface InitStatus {
+  initialized: boolean;
+}
+
+/**
+ * 初始化结果
+ */
+export interface InitResult {
+  adminToken: string;
+  message: string;
+}
+
+/**
+ * Token 验证结果
+ */
+export interface ValidateTokenResult {
+  valid: boolean;
+}
