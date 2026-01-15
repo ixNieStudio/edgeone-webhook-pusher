@@ -20,7 +20,7 @@
   "scripts": {
     "dev": "nuxt dev",
     "dev:edgeone": "edgeone pages dev",
-    "build": "yarn generate:openapi && nuxt generate",
+    "build": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "vitest run",
