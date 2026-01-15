@@ -2,8 +2,7 @@
  * EdgeOne Node Functions - TypeScript + Koa
  * Route: /v1/*
  * 
- * OpenAPI 文档通过编译时脚本生成到 public/openapi.json
- * 前端可直接读取静态文件渲染
+ * 应用入口文件，注册所有中间件和路由
  */
 
 import Koa from 'koa';
@@ -11,81 +10,56 @@ import Router from '@koa/router';
 // @ts-ignore - koa-bodyparser types are not fully compatible
 import bodyParser from 'koa-bodyparser';
 
-// 扩展 Koa Context 类型以支持 body
-interface RequestWithBody {
-  body?: Record<string, unknown>;
-}
+// 中间件
+import { errorHandler, responseWrapper, cors } from '../middleware/index.js';
 
-// ============ 类型定义 ============
+// 路由
+import {
+  initRouter,
+  configRouter,
+  channelsRouter,
+  appsRouter,
+  openidsRouter,
+  messagesRouter,
+  wechatMsgRouter,
+} from '../routes/index.js';
 
-interface ApiResponse<T = unknown> {
-  code: number;
-  message?: string;
-  data: T;
-}
-
-interface TestItem {
-  id: string;
-  name: string;
-  createdAt: string;
-}
+// KV 客户端
+import { setKVBaseUrl } from '../shared/kv-client.js';
 
 // ============ 创建 Koa 应用 ============
 
 const app = new Koa();
 
-// CORS 中间件
+// 设置 KV baseUrl 的中间件
 app.use(async (ctx, next) => {
-  ctx.set('Access-Control-Allow-Origin', '*');
-  ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Token');
-  
-  if (ctx.method === 'OPTIONS') {
-    ctx.status = 204;
-    return;
+  // 优先使用环境变量（用于开发环境访问远程 KV）
+  const envKVBaseUrl = process.env.KV_BASE_URL;
+  if (envKVBaseUrl) {
+    setKVBaseUrl(envKVBaseUrl);
+  } else {
+    // 从请求中获取 baseUrl（生产环境）
+    const protocol = ctx.get('x-forwarded-proto') || ctx.protocol;
+    const host = ctx.get('host');
+    const baseUrl = `${protocol}://${host}`;
+    setKVBaseUrl(baseUrl);
   }
-  
   await next();
 });
+
+// 错误处理中间件（最外层）
+app.use(errorHandler);
+
+// CORS 中间件
+app.use(cors);
 
 // Body parser
 app.use(bodyParser());
 
-// 错误处理中间件
-app.use(async (ctx, next) => {
-  try {
-    await next();
-  } catch (err) {
-    console.error('Error:', err);
-    ctx.status = 500;
-    ctx.body = {
-      code: 50001,
-      message: err instanceof Error ? err.message : 'Internal error',
-      data: null,
-    } as ApiResponse<null>;
-  }
-});
-
 // 响应包装中间件
-app.use(async (ctx, next) => {
-  await next();
-  
-  // 如果响应体已经是标准格式，不再包装
-  if (ctx.body && typeof ctx.body === 'object' && 'code' in ctx.body) {
-    return;
-  }
-  
-  // 包装成功响应
-  if (ctx.body !== undefined) {
-    ctx.body = {
-      code: 0,
-      message: 'success',
-      data: ctx.body,
-    };
-  }
-});
+app.use(responseWrapper);
 
-// ============ 路由定义 ============
+// ============ 注册路由 ============
 
 const router = new Router();
 
@@ -98,61 +72,29 @@ router.get('/health', async (ctx) => {
   };
 });
 
-// 获取列表
-router.get('/items', async (ctx) => {
-  const items: TestItem[] = [
-    { id: '1', name: 'Item 1', createdAt: new Date().toISOString() },
-    { id: '2', name: 'Item 2', createdAt: new Date().toISOString() },
-  ];
-  ctx.body = items;
-});
+// 注册业务路由
+router.use(initRouter.routes());
+router.use(initRouter.allowedMethods());
 
-// 创建项目
-router.post('/items', async (ctx) => {
-  const body = (ctx.request as unknown as RequestWithBody).body as { name?: string } | undefined;
-  
-  if (!body?.name) {
-    ctx.status = 400;
-    ctx.body = {
-      code: 40001,
-      message: 'Missing required field: name',
-      data: null,
-    } as ApiResponse<null>;
-    return;
-  }
-  
-  const item: TestItem = {
-    id: Date.now().toString(),
-    name: body.name,
-    createdAt: new Date().toISOString(),
-  };
-  
-  ctx.status = 201;
-  ctx.body = item;
-});
+router.use(configRouter.routes());
+router.use(configRouter.allowedMethods());
 
-// 获取单个项目
-router.get('/items/:id', async (ctx) => {
-  const { id } = ctx.params;
-  
-  if (id === '1' || id === '2') {
-    const item: TestItem = {
-      id,
-      name: `Item ${id}`,
-      createdAt: new Date().toISOString(),
-    };
-    ctx.body = item;
-  } else {
-    ctx.status = 404;
-    ctx.body = {
-      code: 40401,
-      message: 'Item not found',
-      data: null,
-    } as ApiResponse<null>;
-  }
-});
+router.use(channelsRouter.routes());
+router.use(channelsRouter.allowedMethods());
 
-// 注册路由
+router.use(appsRouter.routes());
+router.use(appsRouter.allowedMethods());
+
+router.use(openidsRouter.routes());
+router.use(openidsRouter.allowedMethods());
+
+router.use(messagesRouter.routes());
+router.use(messagesRouter.allowedMethods());
+
+router.use(wechatMsgRouter.routes());
+router.use(wechatMsgRouter.allowedMethods());
+
+// 注册主路由
 app.use(router.routes());
 app.use(router.allowedMethods());
 
