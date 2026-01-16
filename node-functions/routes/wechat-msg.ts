@@ -137,7 +137,6 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
     // 处理事件
     if (event === 'subscribe') {
       // 用户关注
-      // 保存关注事件消息
       if (channelId && fromUser) {
         await saveInboundMessage({
           channelId,
@@ -151,10 +150,8 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
       
       // 检查是否是扫码关注（带场景值）
       if (eventKey && fromUser) {
-        // 扫码关注的 EventKey 格式为 qrscene_XXXX1234
         const sceneValue = eventKey.replace(/^qrscene_/, '');
         if (sceneValue && sceneValue !== eventKey) {
-          // 是扫码关注，尝试绑定
           replyContent = await handleScanBind(sceneValue, fromUser, channelId);
         } else {
           replyContent = getWelcomeMessage();
@@ -163,7 +160,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
         replyContent = getWelcomeMessage();
       }
     } else if (event === 'unsubscribe') {
-      // 用户取消关注
+      // 用户取消关注（不回复）
       if (channelId && fromUser) {
         await saveInboundMessage({
           channelId,
@@ -177,7 +174,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
       return;
     } else if (event === 'SCAN' && eventKey && fromUser) {
       // 已关注用户扫码
-      if (channelId) {
+      if (channelId && fromUser) {
         await saveInboundMessage({
           channelId,
           openId: fromUser,
@@ -188,6 +185,19 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
         });
       }
       replyContent = await handleScanBind(eventKey, fromUser, channelId);
+    } else {
+      // 其他事件
+      if (channelId && fromUser) {
+        await saveInboundMessage({
+          channelId,
+          openId: fromUser,
+          type: 'event',
+          event: event || 'unknown',
+          title: `事件: ${event || 'unknown'}`,
+          desp: eventKey ? `EventKey: ${eventKey}` : undefined,
+        });
+      }
+      replyContent = '收到';
     }
   } else if (msgType === 'text' && content && fromUser) {
     // 保存文本消息
@@ -202,13 +212,34 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
     }
     
     // 处理文本消息
-    replyContent = await handleTextMessage(content.trim(), fromUser, channelId);
+    const textReply = await handleTextMessage(content.trim(), fromUser, channelId);
+    replyContent = textReply || '收到';
+  } else if (msgType && fromUser) {
+    // 其他类型消息（图片、语音、视频等）
+    if (channelId) {
+      await saveInboundMessage({
+        channelId,
+        openId: fromUser,
+        type: 'text',
+        title: `${msgType}消息`,
+        desp: `收到${msgType}类型消息`,
+      });
+    }
+    replyContent = '收到';
   }
 
-  if (replyContent && toUser && fromUser) {
+  // 确保始终有回复
+  if (!replyContent) {
+    replyContent = '收到';
+  }
+
+  if (toUser && fromUser) {
     ctx.type = 'application/xml';
     ctx.body = buildTextReply(toUser, fromUser, replyContent);
+    console.log('\x1b[32m[WeChat]\x1b[0m Reply XML sent');
   } else {
+    // 无法构建回复时返回 success
+    console.log('\x1b[33m[WeChat]\x1b[0m Cannot build reply, missing toUser or fromUser');
     ctx.body = 'success';
   }
 }
@@ -294,8 +325,8 @@ async function handleScanBind(sceneStr: string, openId: string, channelId?: stri
   // 验证场景值是否是有效的绑定码格式
   const code = sceneStr.toUpperCase();
   if (!/^[A-HJ-NP-Z]{4}[2-9]{4}$/.test(code)) {
-    // 不是绑定码格式，可能是其他场景值
-    return '';
+    // 不是绑定码格式，可能是其他场景值，返回欢迎消息
+    return getWelcomeMessage();
   }
   
   return await performBind(code, openId, channelId);
