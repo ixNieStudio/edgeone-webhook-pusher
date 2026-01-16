@@ -8,13 +8,84 @@
 import Router from '@koa/router';
 import type { AppContext } from '../types/context.js';
 import { messageService } from '../services/message.service.js';
+import { appService } from '../services/app.service.js';
+import { openidService } from '../services/openid.service.js';
 import { adminAuth } from '../middleware/admin-auth.js';
 import { ApiError, ErrorCodes } from '../types/index.js';
+import type { Message, App } from '../types/index.js';
 
 const router = new Router({ prefix: '/messages' });
 
 // 所有消息路由需要认证
 router.use(adminAuth);
+
+// 缓存应用信息和用户信息，避免重复查询
+interface AppCache {
+  [appId: string]: App | null;
+}
+
+interface UserCache {
+  [key: string]: { nickname?: string; avatar?: string } | null;
+}
+
+/**
+ * 丰富消息数据，添加应用名称和用户信息
+ */
+async function enrichMessages(messages: Message[]): Promise<Message[]> {
+  const appCache: AppCache = {};
+  const userCache: UserCache = {};
+
+  const enriched: Message[] = [];
+
+  for (const msg of messages) {
+    const enrichedMsg = { ...msg };
+
+    // 填充应用名称
+    if (msg.appId) {
+      if (!(msg.appId in appCache)) {
+        appCache[msg.appId] = await appService.getById(msg.appId);
+      }
+      const app = appCache[msg.appId];
+      if (app) {
+        enrichedMsg.appName = app.name;
+      }
+    }
+
+    // 填充用户信息（收到的消息）
+    if (msg.direction === 'inbound' && msg.openId && msg.channelId) {
+      // 尝试从所有应用中查找该 openId 的用户信息
+      // 由于 openId 是按应用存储的，我们需要遍历查找
+      const cacheKey = `${msg.channelId}:${msg.openId}`;
+      if (!(cacheKey in userCache)) {
+        // 获取该渠道下所有应用
+        const apps = await appService.listByChannel(msg.channelId);
+        let userInfo: { nickname?: string; avatar?: string } | null = null;
+        
+        for (const app of apps) {
+          const openIdRecord = await openidService.findByOpenId(app.id, msg.openId);
+          if (openIdRecord && (openIdRecord.nickname || openIdRecord.avatar)) {
+            userInfo = {
+              nickname: openIdRecord.nickname,
+              avatar: openIdRecord.avatar,
+            };
+            break;
+          }
+        }
+        userCache[cacheKey] = userInfo;
+      }
+      
+      const user = userCache[cacheKey];
+      if (user) {
+        enrichedMsg.userNickname = user.nickname;
+        enrichedMsg.userAvatar = user.avatar;
+      }
+    }
+
+    enriched.push(enrichedMsg);
+  }
+
+  return enriched;
+}
 
 /**
  * 获取消息历史列表
@@ -62,9 +133,12 @@ router.get('/', async (ctx: AppContext) => {
     endDate: endDate as string | undefined,
   });
 
+  // 丰富消息数据
+  const enrichedMessages = await enrichMessages(result.messages);
+
   // 返回带分页信息的响应
   ctx.body = {
-    items: result.messages,
+    items: enrichedMessages,
     pagination: {
       total: result.total,
       page: result.page,
@@ -90,7 +164,10 @@ router.get('/:id', async (ctx: AppContext) => {
     throw ApiError.notFound('Message not found', ErrorCodes.MESSAGE_NOT_FOUND);
   }
 
-  ctx.body = message;
+  // 丰富消息数据
+  const [enrichedMessage] = await enrichMessages([message]);
+
+  ctx.body = enrichedMessage;
 });
 
 export default router;

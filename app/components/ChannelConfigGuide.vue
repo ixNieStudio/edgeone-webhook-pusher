@@ -126,7 +126,7 @@ const verifyError = ref('');
 
 const serverUrl = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  return `${origin}/api/v1/wechat/${props.channelId}`;
+  return `${origin}/v1/wechat/${props.channelId}`;
 });
 
 // 使用渠道配置中的 msgToken
