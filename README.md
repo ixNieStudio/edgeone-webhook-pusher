@@ -6,7 +6,7 @@
 
 > 本项目由 [Tencent EdgeOne](https://edgeone.ai) 提供 CDN 加速和安全防护赞助
 > 
-> [![Tencent EdgeOne](https://cdnstatic.tencentcs.com/edgeone/pages/logo.svg)](https://edgeone.ai)
+> [![Tencent EdgeOne](https://edgeone.ai/media/34fe3a45-492d-4ea4-ae5d-ea1087ca7b4b.png)](https://edgeone.ai)
 
 ## ✨ 功能特性
 

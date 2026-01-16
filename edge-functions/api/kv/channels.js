@@ -2,6 +2,28 @@
 // Path: /api/kv/channels
 // KV Binding: CHANNELS_KV (configured in EdgeOne Pages)
 
+// BUILD_KEY 在构建时被替换为实际值
+const BUILD_KEY = '03313a5d2d2e465647cdd35e8db8ead567f3530b9b2dce05a84fae40078bc674';
+
+/**
+ * 验证内部 API 密钥
+ * @param {string|null} key - 请求中的密钥
+ * @param {Object} env - 环境变量
+ * @returns {boolean} 是否有效
+ */
+function isValidKey(key, env) {
+  if (!key) return false;
+
+  // Build Key 验证
+  if (key === BUILD_KEY) return true;
+
+  // Debug Key 验证（如果配置）
+  const debugKey = env?.INTERNAL_DEBUG_KEY;
+  if (debugKey && debugKey.length === 64 && key === debugKey) return true;
+
+  return false;
+}
+
 /**
  * Handle KV operations for channels
  * @param {Object} context - EdgeOne EventContext
@@ -11,7 +33,7 @@
  * @returns {Promise<Response>}
  */
 export async function onRequest(context) {
-  const { request } = context;
+  const { request, env } = context;
   const url = new URL(request.url);
   const action = url.searchParams.get('action');
 
@@ -21,6 +43,13 @@ export async function onRequest(context) {
       headers: corsHeaders(),
     });
   }
+
+  // ===== 密钥验证 =====
+  const internalKey = request.headers.get('X-Internal-Key');
+  if (!isValidKey(internalKey, env)) {
+    return jsonResponse(403, { success: false, error: 'Unauthorized' });
+  }
+  // ===== 验证结束 =====
 
   try {
     switch (action) {
@@ -96,7 +125,7 @@ function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Internal-Key',
   };
 }
 
