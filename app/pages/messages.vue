@@ -69,10 +69,24 @@
             </td>
             <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
               <template v-if="msg.direction === 'outbound'">
-                <span class="text-xs text-gray-400">应用:</span> {{ msg.appId || '-' }}
+                <div class="flex items-center gap-2">
+                  <Icon icon="heroicons:cube" class="text-gray-400 text-sm" />
+                  <span>{{ msg.appName || msg.appId || '-' }}</span>
+                </div>
               </template>
               <template v-else>
-                <span class="text-xs text-gray-400">用户:</span> {{ truncateOpenId(msg.openId) }}
+                <div class="flex items-center gap-2">
+                  <img
+                    v-if="msg.userAvatar"
+                    :src="msg.userAvatar"
+                    class="w-6 h-6 rounded-full object-cover"
+                    :alt="msg.userNickname || '用户'"
+                  />
+                  <div v-else class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700">
+                    <Icon icon="heroicons:user" class="text-gray-400 text-sm" />
+                  </div>
+                  <span>{{ msg.userNickname || truncateOpenId(msg.openId) }}</span>
+                </div>
               </template>
             </td>
             <td class="px-4 py-3">
@@ -160,12 +174,28 @@
                   <p class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ selectedMessage.channelId }}</p>
                 </div>
                 <div v-if="selectedMessage.appId">
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">应用 ID</label>
-                  <p class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ selectedMessage.appId }}</p>
+                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">应用</label>
+                  <p class="text-sm text-gray-900 dark:text-gray-100">
+                    {{ selectedMessage.appName || selectedMessage.appId }}
+                  </p>
                 </div>
                 <div v-if="selectedMessage.openId">
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">用户 OpenID</label>
-                  <p class="text-sm font-mono text-gray-900 dark:text-gray-100 break-all">{{ selectedMessage.openId }}</p>
+                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">用户</label>
+                  <div class="flex items-center gap-2">
+                    <img
+                      v-if="selectedMessage.userAvatar"
+                      :src="selectedMessage.userAvatar"
+                      class="w-8 h-8 rounded-full object-cover"
+                      :alt="selectedMessage.userNickname || '用户'"
+                    />
+                    <div v-else class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700">
+                      <Icon icon="heroicons:user" class="text-gray-400" />
+                    </div>
+                    <div>
+                      <p v-if="selectedMessage.userNickname" class="text-sm text-gray-900 dark:text-gray-100">{{ selectedMessage.userNickname }}</p>
+                      <p class="text-xs font-mono text-gray-500 dark:text-gray-400 break-all">{{ selectedMessage.openId }}</p>
+                    </div>
+                  </div>
                 </div>
                 <div v-if="selectedMessage.event">
                   <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">事件类型</label>

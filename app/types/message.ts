@@ -30,7 +30,10 @@ export interface Message {
   type: MessageRecordType;      // 消息类型
   channelId: string;            // 渠道 ID
   appId?: string;               // 应用 ID（推送消息必有）
+  appName?: string;             // 应用名称（API 返回时填充）
   openId?: string;              // 用户 OpenID（收到的消息必有）
+  userNickname?: string;        // 用户昵称（API 返回时填充）
+  userAvatar?: string;          // 用户头像（API 返回时填充）
   title: string;                // 标题/摘要
   desp?: string;                // 详细内容
   event?: string;               // 事件类型（subscribe/unsubscribe/SCAN 等）

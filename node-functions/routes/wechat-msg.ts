@@ -106,7 +106,20 @@ router.post('/wechat/:channelId', async (ctx: AppContext) => {
  * 处理微信消息和事件
  */
 async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
-  const xml = ctx.request.body as string;
+  // 获取原始 XML 内容
+  let xml: string;
+  if (typeof ctx.request.body === 'string') {
+    xml = ctx.request.body;
+  } else if (ctx.request.body && typeof ctx.request.body === 'object') {
+    // 如果 body 已经被解析成对象，尝试从 rawBody 获取
+    xml = (ctx.request as any).rawBody || JSON.stringify(ctx.request.body);
+  } else {
+    xml = '';
+  }
+  
+  console.log('\x1b[36m[WeChat]\x1b[0m Received message, channelId:', channelId);
+  console.log('\x1b[36m[WeChat]\x1b[0m Body type:', typeof ctx.request.body);
+  console.log('\x1b[36m[WeChat]\x1b[0m XML body:', xml.substring(0, 500));
 
   // 解析 XML
   const msgType = extractXmlValue(xml, 'MsgType');
@@ -115,6 +128,8 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
   const content = extractXmlValue(xml, 'Content');
   const event = extractXmlValue(xml, 'Event');
   const eventKey = extractXmlValue(xml, 'EventKey');
+
+  console.log('\x1b[36m[WeChat]\x1b[0m Parsed:', { msgType, fromUser, content, event, eventKey });
 
   let replyContent = '';
 
@@ -221,9 +236,11 @@ async function saveInboundMessage(params: {
       event: params.event,
       createdAt: new Date().toISOString(),
     };
+    console.log('\x1b[36m[WeChat]\x1b[0m Saving inbound message:', JSON.stringify(message, null, 2));
     await messageService.saveMessage(message);
+    console.log('\x1b[32m[WeChat]\x1b[0m Message saved successfully:', message.id);
   } catch (error) {
-    console.error('Failed to save inbound message:', error);
+    console.error('\x1b[31m[WeChat]\x1b[0m Failed to save inbound message:', error);
     // 保存失败不影响消息处理
   }
 }
@@ -366,6 +383,7 @@ async function performBind(code: string, openId: string, channelId?: string): Pr
  * 从 XML 字符串中提取值
  */
 export function extractXmlValue(xml: string, tag: string): string | null {
+  if (!xml || typeof xml !== 'string') return null;
   const match = xml.match(new RegExp(`<${tag}><!\\[CDATA\\[(.+?)\\]\\]></${tag}>|<${tag}>(.+?)</${tag}>`));
   return match ? (match[1] || match[2]) : null;
 }

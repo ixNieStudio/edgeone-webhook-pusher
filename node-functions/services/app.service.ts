@@ -107,6 +107,14 @@ class AppService {
   }
 
   /**
+   * 获取指定渠道下的所有应用
+   */
+  async listByChannel(channelId: string): Promise<App[]> {
+    const allApps = await this.list();
+    return allApps.filter(app => app.channelId === channelId);
+  }
+
+  /**
    * 更新应用
    */
   async update(id: string, data: UpdateAppInput): Promise<App> {

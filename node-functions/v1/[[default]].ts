@@ -11,7 +11,7 @@ import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 
 // 中间件
-import { errorHandler, responseWrapper, cors } from '../middleware/index.js';
+import { errorHandler, responseWrapper, cors, xmlBody } from '../middleware/index.js';
 
 // 路由
 import {
@@ -58,7 +58,10 @@ app.use(errorHandler);
 // CORS 中间件
 app.use(cors);
 
-// Body parser
+// XML Body 中间件（必须在 bodyParser 之前，用于处理微信 XML 消息）
+app.use(xmlBody);
+
+// Body parser - 支持 JSON 和 form
 app.use(bodyParser());
 
 // 响应包装中间件
