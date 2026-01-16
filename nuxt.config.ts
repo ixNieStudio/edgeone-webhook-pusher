@@ -40,6 +40,7 @@ export default defineNuxtConfig({
 
   tailwindcss: {
     cssPath: '~/assets/css/main.css',
+    configPath: 'tailwind.config.js',
   },
 
   router: {

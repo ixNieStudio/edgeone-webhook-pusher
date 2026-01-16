@@ -82,4 +82,7 @@ pnpm-lock.yaml
 .edgeone/*
 !.edgeone/project.json
 .tef_dist/*
+
+# Internal API Key (generated at build time)
+shared/internal-key.json
   

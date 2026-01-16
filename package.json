@@ -20,6 +20,7 @@
   "scripts": {
     "dev": "nuxt dev",
     "dev:edgeone": "edgeone pages dev",
+    "prebuild": "tsx scripts/generate-internal-key.ts",
     "build": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -27,7 +28,8 @@
     "test:watch": "vitest",
     "clean": "rimraf dist .nuxt .output",
     "typecheck": "tsc -p node-functions/tsconfig.json --noEmit",
-    "generate:openapi": "tsx scripts/generate-openapi.ts"
+    "generate:openapi": "tsx scripts/generate-openapi.ts",
+    "generate:key": "tsx scripts/generate-internal-key.ts"
   },
   "dependencies": {
     "@iconify/vue": "^4.3.0",

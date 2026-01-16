@@ -6,8 +6,15 @@
  * Node Functions 无法直接访问 EdgeOne KV，需要通过 Edge Functions 代理
  * Edge Functions 位于 edge-functions/api/kv/ 目录
  * 
+ * 安全说明：
+ * 所有请求都需要携带 X-Internal-Key header 进行认证
+ * 优先使用环境变量 INTERNAL_DEBUG_KEY（本地调试），否则使用构建时生成的密钥
+ * 
  * 优先使用环境变量 KV_BASE_URL，生产环境留空使用同源请求
  */
+
+// 导入构建时生成的密钥配置
+import keyConfig from '../../shared/internal-key.json' with { type: 'json' };
 
 // Store for dynamic base URL (set from request context)
 let dynamicBaseUrl: string | null = null;
@@ -26,6 +33,28 @@ export function setKVBaseUrl(url: string): void {
  */
 function getBaseUrl(): string {
   return process.env.KV_BASE_URL || dynamicBaseUrl || '';
+}
+
+/**
+ * 获取内部 API 密钥
+ * 优先使用调试密钥（本地开发），否则使用构建时生成的密钥
+ */
+export function getInternalKey(): string {
+  // 优先使用调试密钥（本地开发时通过 .env.local 配置）
+  if (process.env.INTERNAL_DEBUG_KEY) {
+    return process.env.INTERNAL_DEBUG_KEY;
+  }
+  // 否则使用构建时生成的密钥
+  return keyConfig.buildKey;
+}
+
+/**
+ * 获取包含认证信息的请求头
+ */
+function getAuthHeaders(): Record<string, string> {
+  return {
+    'X-Internal-Key': getInternalKey(),
+  };
 }
 
 /**
@@ -61,7 +90,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
   return {
     async get<R = T>(key: string): Promise<R | null> {
       const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
-      const res = await fetch(`${baseUrl}?action=get&key=${encodeURIComponent(key)}`);
+      const res = await fetch(`${baseUrl}?action=get&key=${encodeURIComponent(key)}`, {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json() as KVResponse<R>;
       if (!data.success) {
         throw new Error(data.error || 'KV get failed');
@@ -73,7 +104,10 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
       const res = await fetch(`${baseUrl}?action=put`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
         body: JSON.stringify({ key, value, ttl }),
       });
       const data = await res.json() as KVResponse;
@@ -84,7 +118,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
 
     async delete(key: string): Promise<void> {
       const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
-      const res = await fetch(`${baseUrl}?action=delete&key=${encodeURIComponent(key)}`);
+      const res = await fetch(`${baseUrl}?action=delete&key=${encodeURIComponent(key)}`, {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json() as KVResponse;
       if (!data.success) {
         throw new Error(data.error || 'KV delete failed');
@@ -101,7 +137,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       if (cursor) {
         params.set('cursor', cursor);
       }
-      const res = await fetch(`${baseUrl}?${params}`);
+      const res = await fetch(`${baseUrl}?${params}`, {
+        headers: getAuthHeaders(),
+      });
       const data = await res.json() as KVResponse;
       if (!data.success) {
         throw new Error(data.error || 'KV list failed');

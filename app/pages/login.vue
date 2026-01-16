@@ -1,42 +1,42 @@
 <template>
-  <div class="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800 p-6">
+  <div class="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-primary-500 via-primary-600 to-secondary-600 p-6">
     <div class="w-full max-w-sm">
       <!-- Header -->
       <div class="text-center text-white mb-8">
         <div class="w-16 h-16 mx-auto mb-4 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur">
-          <Icon icon="heroicons:bolt" class="text-3xl" />
+          <Icon icon="tabler:webhook" class="text-3xl" />
         </div>
         <h1 class="text-2xl font-bold mb-1">Webhook Pusher</h1>
         <p class="text-white/80 text-sm">消息推送服务管理后台</p>
       </div>
 
       <!-- Loading State -->
-      <div v-if="checking" class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
+      <div v-if="checking" class="card card-lg">
         <div class="text-center py-12">
-          <Icon icon="heroicons:arrow-path" class="text-4xl animate-spin text-blue-600 mb-4" />
-          <p class="text-gray-500">检查初始化状态...</p>
+          <Icon icon="svg-spinners:ring-resize" class="text-4xl text-primary-500 mb-4" />
+          <p class="text-[var(--text-secondary)]">检查初始化状态...</p>
         </div>
       </div>
 
       <!-- Init Mode -->
-      <div v-else-if="!isInitialized" class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
+      <div v-else-if="!isInitialized" class="card card-lg">
         <!-- Before Init -->
         <template v-if="!generatedToken">
           <div class="text-center py-8 px-2">
-            <div class="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-              <Icon icon="heroicons:rocket-launch" class="text-3xl text-blue-600" />
+            <div class="w-16 h-16 mx-auto mb-4 bg-primary-100 dark:bg-primary-900/30 rounded-full flex items-center justify-center">
+              <Icon icon="tabler:rocket" class="text-3xl icon-primary" />
             </div>
-            <h2 class="text-lg font-semibold mb-2">首次使用</h2>
-            <p class="text-gray-500 text-sm mb-6">
+            <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-2">首次使用</h2>
+            <p class="text-[var(--text-secondary)] text-sm mb-6">
               系统尚未初始化，点击下方按钮生成管理令牌
             </p>
             <button
-              class="w-full py-3 px-4 inline-flex justify-center items-center gap-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+              class="btn btn-lg btn-solid-primary w-full"
               :disabled="initializing"
               @click="handleInit"
             >
-              <Icon v-if="initializing" icon="heroicons:arrow-path" class="animate-spin" />
-              <Icon v-else icon="heroicons:play" />
+              <Icon v-if="initializing" icon="svg-spinners:ring-resize" />
+              <Icon v-else icon="tabler:player-play-filled" />
               开始初始化
             </button>
           </div>
@@ -46,39 +46,39 @@
         <template v-else>
           <div class="py-6 px-2">
             <div class="text-center mb-6">
-              <div class="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                <Icon icon="heroicons:check-circle" class="text-3xl text-green-600" />
+              <div class="w-16 h-16 mx-auto mb-4 bg-success-100 dark:bg-success-900/30 rounded-full flex items-center justify-center">
+                <Icon icon="tabler:circle-check-filled" class="text-3xl icon-success" />
               </div>
-              <h2 class="text-lg font-semibold">初始化成功</h2>
+              <h2 class="text-lg font-semibold text-[var(--text-primary)]">初始化成功</h2>
             </div>
             
-            <div class="p-4 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-300 mb-4">
+            <div class="p-4 rounded-lg bg-warning-100 dark:bg-warning-900/20 border border-warning-300 dark:border-warning-800 text-warning-700 dark:text-warning-400 mb-4">
               <div class="flex gap-2">
-                <Icon icon="heroicons:exclamation-triangle" class="text-lg shrink-0 mt-0.5" />
+                <Icon icon="tabler:alert-triangle-filled" class="text-lg shrink-0 mt-0.5" />
                 <span class="text-sm">请妥善保存管理令牌，丢失后无法找回！</span>
               </div>
             </div>
 
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">管理令牌</label>
+                <label class="block text-sm font-medium text-[var(--text-primary)] mb-1">管理令牌</label>
                 <input
                   :value="generatedToken"
                   readonly
-                  class="w-full px-3 py-2 text-sm font-mono border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                  class="input input-md font-mono"
                 />
               </div>
 
               <button
-                class="w-full py-2 px-4 inline-flex justify-center items-center gap-2 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                class="btn btn-md btn-outline-primary w-full"
                 @click="copyToken"
               >
-                <Icon icon="heroicons:clipboard-document" />
+                <Icon icon="tabler:copy" />
                 复制令牌
               </button>
 
               <button
-                class="w-full py-3 px-4 inline-flex justify-center items-center gap-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
+                class="btn btn-lg btn-solid-primary w-full"
                 @click="confirmAndLogin"
               >
                 进入管理后台
@@ -89,45 +89,42 @@
       </div>
 
       <!-- Login Mode -->
-      <div v-else class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
+      <div v-else class="card card-lg">
         <div class="py-6 px-2">
           <div class="text-center mb-6">
-            <div class="w-16 h-16 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-              <Icon icon="heroicons:lock-closed" class="text-3xl text-blue-600" />
-            </div>
-            <h2 class="text-lg font-semibold">管理员登录</h2>
+            <h2 class="text-lg font-semibold text-[var(--text-primary)]">管理员登录</h2>
           </div>
 
           <form class="space-y-4" @submit.prevent="handleLogin">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">管理令牌</label>
+              <label class="block text-sm font-medium text-[var(--text-primary)] mb-1">管理令牌</label>
               <div class="relative">
-                <Icon icon="heroicons:key" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Icon icon="tabler:key" class="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                 <input
                   v-model="formData.token"
                   type="password"
                   placeholder="请输入管理令牌"
                   :class="[
-                    'w-full pl-10 pr-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2',
-                    loginError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-700 focus:ring-blue-500'
+                    'input input-md pl-10',
+                    loginError ? 'input-error' : ''
                   ]"
                 />
               </div>
             </div>
 
-            <div v-if="loginError" class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 text-sm">
+            <div v-if="loginError" class="p-3 rounded-lg bg-danger-100 dark:bg-danger-900/20 border border-danger-300 dark:border-danger-800 text-danger-700 dark:text-danger-400 text-sm">
               <div class="flex gap-2">
-                <Icon icon="heroicons:exclamation-circle" class="shrink-0 mt-0.5" />
+                <Icon icon="tabler:alert-circle-filled" class="shrink-0 mt-0.5" />
                 <span>{{ loginError }}</span>
               </div>
             </div>
 
             <button
               type="submit"
-              class="w-full py-3 px-4 inline-flex justify-center items-center gap-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+              class="btn btn-lg btn-solid-primary w-full"
               :disabled="logging"
             >
-              <Icon v-if="logging" icon="heroicons:arrow-path" class="animate-spin" />
+              <Icon v-if="logging" icon="svg-spinners:ring-resize" />
               登录
             </button>
           </form>
@@ -135,9 +132,12 @@
       </div>
 
       <!-- Footer -->
-      <p class="text-center text-white/60 text-xs mt-6">
-        Powered by EdgeOne Functions
-      </p>
+      <div class="text-center mt-6">
+        <a href="https://edgeone.ai/?from=github" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-white/60 hover:text-white/80 transition-colors">
+          <span class="text-xs">Powered by</span>
+          <img src="https://edgeone.ai/media/34fe3a45-492d-4ea4-ae5d-ea1087ca7b4b.png" alt="EdgeOne" class="h-5 bg-white rounded px-1.5 py-0.5" />
+        </a>
+      </div>
     </div>
   </div>
 </template>

@@ -14,9 +14,21 @@ definePageMeta({
   layout: 'default',
 })
 
-const colorMode = useColorMode()
-const isDark = computed(() => colorMode.value === 'dark')
+const isDark = ref(false)
 const iframeRef = ref<HTMLIFrameElement | null>(null)
+
+onMounted(() => {
+  // 检测当前暗色模式状态
+  isDark.value = document.documentElement.classList.contains('dark')
+  
+  // 监听 class 变化
+  const observer = new MutationObserver(() => {
+    isDark.value = document.documentElement.classList.contains('dark')
+  })
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  
+  onUnmounted(() => observer.disconnect())
+})
 
 // 获取当前页面的 origin
 const origin = computed(() => {
