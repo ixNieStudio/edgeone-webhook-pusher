@@ -1,18 +1,18 @@
 <template>
-  <div class="flex h-screen bg-gray-50 dark:bg-gray-950">
+  <div class="flex h-screen bg-[var(--bg-secondary)]">
     <!-- Sidebar -->
     <aside
       :class="[
-        'fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300',
+        'fixed inset-y-0 left-0 z-50 flex flex-col bg-[var(--bg-elevated)] border-r border-[var(--border-default)] transition-all duration-300',
         sidebarCollapsed ? 'w-16' : 'w-56',
         'lg:relative',
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       ]"
     >
       <!-- Logo -->
-      <div class="flex items-center gap-2 p-4 cursor-pointer border-b border-gray-200 dark:border-gray-800" @click="sidebarCollapsed = !sidebarCollapsed">
-        <Icon icon="heroicons:bolt" class="text-2xl text-blue-600 shrink-0" />
-        <span v-if="!sidebarCollapsed" class="font-semibold text-sm truncate">Webhook Pusher</span>
+      <div class="flex items-center gap-2 p-4 cursor-pointer border-b border-[var(--border-default)]" @click="sidebarCollapsed = !sidebarCollapsed">
+        <Icon icon="tabler:webhook" class="text-2xl text-primary-500 shrink-0" />
+        <span v-if="!sidebarCollapsed" class="font-semibold text-sm truncate text-[var(--text-primary)]">Webhook Pusher</span>
       </div>
 
       <!-- Navigation -->
@@ -24,8 +24,8 @@
           :class="[
             'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
             route.path === item.to
-              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-              : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+              ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400'
+              : 'text-[var(--text-secondary)] hover:bg-neutral-100 dark:hover:bg-neutral-800'
           ]"
           @click="mobileMenuOpen = false"
         >
@@ -35,21 +35,42 @@
       </nav>
 
       <!-- Footer -->
-      <div class="p-2 border-t border-gray-200 dark:border-gray-800 space-y-1">
+      <div class="p-2 border-t border-[var(--border-default)] space-y-1">
         <button
-          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
-          @click="toggleColorMode"
+          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-secondary)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+          @click="handleToggleTheme"
         >
-          <Icon :icon="isDark ? 'heroicons:sun' : 'heroicons:moon'" class="text-lg" />
+          <Icon :icon="isDark ? 'tabler:sun' : 'tabler:moon'" class="text-lg" />
           <span v-if="!sidebarCollapsed">{{ isDark ? '浅色模式' : '深色模式' }}</span>
         </button>
         <button
-          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-secondary)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           @click="handleLogout"
         >
-          <Icon icon="heroicons:arrow-right-on-rectangle" class="text-lg" />
+          <Icon icon="tabler:logout" class="text-lg" />
           <span v-if="!sidebarCollapsed">退出登录</span>
         </button>
+        <a 
+          href="https://github.com/ixNieStudio/edgeone-webhook-pusher" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-[var(--text-secondary)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        >
+          <Icon icon="tabler:brand-github" class="text-lg" />
+          <span v-if="!sidebarCollapsed">项目地址</span>
+        </a>
+        <a 
+          href="https://edgeone.ai/?from=github" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="flex items-center justify-center px-3 py-2 rounded-lg text-xs text-[var(--text-muted)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        >
+          <template v-if="!sidebarCollapsed">
+            <span class="whitespace-nowrap mr-2">Powered by</span>
+            <img src="https://edgeone.ai/media/34fe3a45-492d-4ea4-ae5d-ea1087ca7b4b.png" alt="EdgeOne" class="h-4 shrink-0" />
+          </template>
+          <span v-else class="text-[10px]">EdgeOne</span>
+        </a>
       </div>
     </aside>
 
@@ -63,11 +84,11 @@
     <!-- Main content -->
     <div class="flex-1 flex flex-col min-w-0">
       <!-- Mobile header -->
-      <header class="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <button class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" @click="mobileMenuOpen = true">
-          <Icon icon="heroicons:bars-3" class="text-xl" />
+      <header class="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-[var(--border-default)] bg-[var(--bg-elevated)]">
+        <button class="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800" @click="mobileMenuOpen = true">
+          <Icon icon="tabler:menu-2" class="text-xl text-[var(--text-primary)]" />
         </button>
-        <span class="font-medium">{{ pageTitle }}</span>
+        <span class="font-medium text-[var(--text-primary)]">{{ pageTitle }}</span>
       </header>
 
       <main class="flex-1 overflow-auto">
@@ -85,10 +106,10 @@ import { useAuthStore } from '~/stores/auth';
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const { isDark, toggle, init } = useTheme();
 
 const sidebarCollapsed = ref(false);
 const mobileMenuOpen = ref(false);
-const isDark = ref(false);
 
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
@@ -103,18 +124,16 @@ const pageTitle = computed(() => {
 });
 
 const menuItems = [
-  { label: '仪表盘', icon: 'heroicons:home', to: '/' },
-  { label: '渠道管理', icon: 'heroicons:signal', to: '/channels' },
-  { label: '应用管理', icon: 'heroicons:cube', to: '/apps' },
-  { label: '消息历史', icon: 'heroicons:chat-bubble-left-right', to: '/messages' },
-  { label: 'API 文档', icon: 'heroicons:book-open', to: '/api-docs' },
-  { label: '设置', icon: 'heroicons:cog-6-tooth', to: '/settings' },
+  { label: '仪表盘', icon: 'tabler:dashboard', to: '/' },
+  { label: '渠道管理', icon: 'tabler:broadcast', to: '/channels' },
+  { label: '应用管理', icon: 'tabler:apps', to: '/apps' },
+  { label: '消息历史', icon: 'tabler:message-2', to: '/messages' },
+  { label: 'API 文档', icon: 'tabler:file-code', to: '/api-docs' },
+  { label: '设置', icon: 'tabler:settings', to: '/settings' },
 ];
 
-function toggleColorMode() {
-  isDark.value = !isDark.value;
-  document.documentElement.classList.toggle('dark', isDark.value);
-  localStorage.setItem('color-mode', isDark.value ? 'dark' : 'light');
+function handleToggleTheme() {
+  toggle();
 }
 
 function handleLogout() {
@@ -124,9 +143,7 @@ function handleLogout() {
 }
 
 onMounted(() => {
-  const saved = localStorage.getItem('color-mode');
-  isDark.value = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.classList.toggle('dark', isDark.value);
+  init();
   
   if (window.innerWidth < 1024) {
     sidebarCollapsed.value = true;
