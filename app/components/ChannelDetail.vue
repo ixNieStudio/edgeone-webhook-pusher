@@ -4,133 +4,174 @@
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-          <UIcon name="i-heroicons-signal" class="text-green-600 dark:text-green-400 text-2xl" />
+          <Icon icon="heroicons:signal" class="text-green-600 dark:text-green-400 text-2xl" />
         </div>
         <div>
           <h2 class="text-lg font-semibold">{{ channel.name }}</h2>
-          <UBadge color="primary" variant="subtle" size="xs">
+          <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
             {{ channel.type === 'wechat' ? '微信公众号' : channel.type }}
-          </UBadge>
+          </span>
         </div>
       </div>
       <div class="flex gap-2">
-        <UButton variant="ghost" icon="i-heroicons-pencil" @click="showEditModal = true">
+        <button
+          class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          @click="showEditModal = true"
+        >
+          <Icon icon="heroicons:pencil" class="text-base" />
           编辑
-        </UButton>
-        <UButton variant="ghost" color="error" icon="i-heroicons-trash" @click="handleDelete">
+        </button>
+        <button
+          class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          @click="handleDelete"
+        >
+          <Icon icon="heroicons:trash" class="text-base" />
           删除
-        </UButton>
+        </button>
       </div>
     </div>
 
     <!-- Info Card -->
-    <UCard>
-      <template #header>
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <span class="font-medium">基本信息</span>
-      </template>
-      <dl class="space-y-4">
-        <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-gray-400">渠道 ID</dt>
-          <dd class="flex items-center gap-2">
-            <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.id }}</code>
-            <UButton variant="ghost" size="xs" icon="i-heroicons-clipboard" @click="copyToClipboard(channel.id, '渠道 ID')" />
-          </dd>
-        </div>
-        <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-gray-400">创建时间</dt>
-          <dd>{{ channel.createdAt }}</dd>
-        </div>
-        <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-gray-400">更新时间</dt>
-          <dd>{{ channel.updatedAt }}</dd>
-        </div>
-      </dl>
-    </UCard>
+      </div>
+      <div class="p-4">
+        <dl class="space-y-4">
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">渠道 ID</dt>
+            <dd class="flex items-center gap-2">
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.id }}</code>
+              <button class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="copyToClipboard(channel.id, '渠道 ID')">
+                <Icon icon="heroicons:clipboard" class="text-base" />
+              </button>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">创建时间</dt>
+            <dd>{{ channel.createdAt }}</dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">更新时间</dt>
+            <dd>{{ channel.updatedAt }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
 
     <!-- WeChat Config Card -->
-    <UCard>
-      <template #header>
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <span class="font-medium">微信配置</span>
-      </template>
-      <dl class="space-y-4">
-        <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-gray-400">AppID</dt>
-          <dd class="flex items-center gap-2">
-            <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.config?.appId || '-' }}</code>
-            <UButton v-if="channel.config?.appId" variant="ghost" size="xs" icon="i-heroicons-clipboard" @click="copyToClipboard(channel.config.appId, 'AppID')" />
-          </dd>
-        </div>
-        <div class="flex justify-between">
-          <dt class="text-gray-500 dark:text-gray-400">AppSecret</dt>
-          <dd>
-            <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ maskSecret(channel.config?.appSecret) }}</code>
-          </dd>
-        </div>
-      </dl>
-    </UCard>
+      </div>
+      <div class="p-4">
+        <dl class="space-y-4">
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">AppID</dt>
+            <dd class="flex items-center gap-2">
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.config?.appId || '-' }}</code>
+              <button v-if="channel.config?.appId" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="copyToClipboard(channel.config.appId, 'AppID')">
+                <Icon icon="heroicons:clipboard" class="text-base" />
+              </button>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">AppSecret</dt>
+            <dd>
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ maskSecret(channel.config?.appSecret) }}</code>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
 
     <!-- Usage Tips -->
-    <UCard>
-      <template #header>
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <span class="font-medium">使用说明</span>
-      </template>
-      <div class="space-y-4">
-        <div class="flex gap-3">
-          <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-            <span class="text-primary font-medium text-sm">1</span>
+      </div>
+      <div class="p-4">
+        <div class="space-y-4">
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+              <span class="text-primary-600 font-medium text-sm">1</span>
+            </div>
+            <div>
+              <div class="font-medium text-sm">创建应用</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">在"应用管理"中创建应用，选择此渠道作为消息发送通道</div>
+            </div>
           </div>
-          <div>
-            <div class="font-medium text-sm">创建应用</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">在"应用管理"中创建应用，选择此渠道作为消息发送通道</div>
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+              <span class="text-primary-600 font-medium text-sm">2</span>
+            </div>
+            <div>
+              <div class="font-medium text-sm">绑定用户</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">在应用中添加 OpenID，绑定需要接收消息的微信用户</div>
+            </div>
           </div>
-        </div>
-        <div class="flex gap-3">
-          <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-            <span class="text-primary font-medium text-sm">2</span>
-          </div>
-          <div>
-            <div class="font-medium text-sm">绑定用户</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">在应用中添加 OpenID，绑定需要接收消息的微信用户</div>
-          </div>
-        </div>
-        <div class="flex gap-3">
-          <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-            <span class="text-primary font-medium text-sm">3</span>
-          </div>
-          <div>
-            <div class="font-medium text-sm">发送消息</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">通过应用的 Webhook URL 发送消息，系统会自动使用此渠道配置</div>
+          <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+              <span class="text-primary-600 font-medium text-sm">3</span>
+            </div>
+            <div>
+              <div class="font-medium text-sm">发送消息</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">通过应用的 Webhook URL 发送消息，系统会自动使用此渠道配置</div>
+            </div>
           </div>
         </div>
       </div>
-    </UCard>
+    </div>
 
     <!-- Edit Modal -->
-    <UModal v-model:open="showEditModal" title="编辑渠道">
-      <template #body>
-        <div class="space-y-4">
-          <UFormField label="渠道名称">
-            <UInput v-model="editForm.name" placeholder="请输入渠道名称" />
-          </UFormField>
-          <UFormField label="AppID">
-            <UInput v-model="editForm.appId" :placeholder="channel.config?.appId || '微信公众号 AppID'" />
-          </UFormField>
-          <UFormField label="AppSecret">
-            <UInput v-model="editForm.appSecret" type="password" placeholder="留空则不修改" />
-          </UFormField>
+    <div
+      v-if="showEditModal"
+      class="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto"
+    >
+      <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-xl w-full max-w-md">
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 class="font-semibold text-gray-800 dark:text-gray-200">编辑渠道</h3>
+            <button
+              type="button"
+              class="p-2 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              @click="showEditModal = false"
+            >
+              <Icon icon="heroicons:x-mark" class="text-xl" />
+            </button>
+          </div>
+          <div class="p-4">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">渠道名称</label>
+                <input v-model="editForm.name" placeholder="请输入渠道名称" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppID</label>
+                <input v-model="editForm.appId" :placeholder="channel.config?.appId || '微信公众号 AppID'" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppSecret</label>
+                <input v-model="editForm.appSecret" type="password" placeholder="留空则不修改" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 py-3 px-4 border-t border-gray-200 dark:border-gray-800">
+            <button class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" @click="showEditModal = false">取消</button>
+            <button :disabled="saving" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors" @click="handleUpdate">
+              <Icon v-if="saving" icon="heroicons:arrow-path" class="text-base animate-spin" />
+              保存
+            </button>
+          </div>
         </div>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="showEditModal = false">取消</UButton>
-          <UButton :loading="saving" @click="handleUpdate">保存</UButton>
-        </div>
-      </template>
-    </UModal>
+        <div class="fixed inset-0 bg-black/50 -z-10" @click="showEditModal = false"></div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue';
 import type { Channel, UpdateChannelInput } from '~/types';
 
 const props = defineProps<{

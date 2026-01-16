@@ -7,14 +7,18 @@
         <div class="p-4 border-b border-gray-200 dark:border-gray-800">
           <div class="flex items-center justify-between mb-4">
             <h1 class="text-lg font-semibold">渠道管理</h1>
-            <UButton size="sm" icon="i-heroicons-plus" @click="showCreateModal = true">
+            <button
+              class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+              @click="showCreateModal = true"
+            >
+              <Icon icon="heroicons:plus" class="text-base" />
               新建
-            </UButton>
+            </button>
           </div>
         </div>
         <div class="flex-1 overflow-auto p-4">
           <div v-if="loading" class="flex justify-center py-8">
-            <UIcon name="i-heroicons-arrow-path" class="text-2xl animate-spin text-gray-400" />
+            <Icon icon="heroicons:arrow-path" class="text-2xl animate-spin text-gray-400" />
           </div>
           <ChannelList
             v-else
@@ -39,9 +43,9 @@
           message="选择一个渠道查看详情"
         >
           <template #action>
-            <UButton v-if="channels.length === 0" @click="showCreateModal = true">
+            <button v-if="channels.length === 0" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors" @click="showCreateModal = true">
               创建第一个渠道
-            </UButton>
+            </button>
           </template>
         </EmptyState>
       </div>
@@ -53,14 +57,18 @@
         <div class="p-4 border-b border-gray-200 dark:border-gray-800">
           <div class="flex items-center justify-between">
             <h1 class="text-lg font-semibold">渠道管理</h1>
-            <UButton size="sm" icon="i-heroicons-plus" @click="showCreateModal = true">
+            <button
+              class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+              @click="showCreateModal = true"
+            >
+              <Icon icon="heroicons:plus" class="text-base" />
               新建
-            </UButton>
+            </button>
           </div>
         </div>
         <div class="flex-1 overflow-auto p-4">
           <div v-if="loading" class="flex justify-center py-8">
-            <UIcon name="i-heroicons-arrow-path" class="text-2xl animate-spin text-gray-400" />
+            <Icon icon="heroicons:arrow-path" class="text-2xl animate-spin text-gray-400" />
           </div>
           <ChannelList
             v-else
@@ -73,9 +81,13 @@
 
       <div v-else class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-950">
         <div class="p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          <UButton variant="ghost" icon="i-heroicons-arrow-left" @click="handleMobileBack">
+          <button
+            class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            @click="handleMobileBack"
+          >
+            <Icon icon="heroicons:arrow-left" class="text-base" />
             返回列表
-          </UButton>
+          </button>
         </div>
         <div class="flex-1 overflow-auto p-4">
           <ChannelDetail
@@ -89,39 +101,66 @@
     </template>
 
     <!-- Create Modal -->
-    <UModal v-model:open="showCreateModal" title="新建渠道">
-      <template #body>
-        <div class="space-y-4">
-          <UFormField label="渠道名称">
-            <UInput v-model="createForm.name" placeholder="请输入渠道名称" />
-          </UFormField>
-          <UFormField label="渠道类型">
-            <USelect v-model="createForm.type" :items="[{ label: '微信公众号', value: 'wechat' }]" disabled />
-          </UFormField>
-          <UFormField label="AppID">
-            <UInput v-model="createForm.config.appId" placeholder="微信公众号 AppID" />
-          </UFormField>
-          <UFormField label="AppSecret">
-            <UInput v-model="createForm.config.appSecret" type="password" placeholder="微信公众号 AppSecret" />
-          </UFormField>
-          <UAlert color="info" icon="i-heroicons-information-circle">
-            <template #description>
-              渠道用于配置消息发送通道，创建后可在应用中引用
-            </template>
-          </UAlert>
+    <div
+      v-if="showCreateModal"
+      class="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto"
+    >
+      <div class="min-h-screen flex items-center justify-center p-4">
+        <div class="flex flex-col bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-xl w-full max-w-md">
+          <div class="flex justify-between items-center py-3 px-4 border-b border-gray-200 dark:border-gray-800">
+            <h3 class="font-semibold text-gray-800 dark:text-gray-200">新建渠道</h3>
+            <button
+              type="button"
+              class="p-2 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              @click="showCreateModal = false"
+            >
+              <Icon icon="heroicons:x-mark" class="text-xl" />
+            </button>
+          </div>
+          <div class="p-4">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">渠道名称</label>
+                <input v-model="createForm.name" placeholder="请输入渠道名称" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">渠道类型</label>
+                <select disabled class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed">
+                  <option value="wechat">微信公众号</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppID</label>
+                <input v-model="createForm.config.appId" placeholder="微信公众号 AppID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppSecret</label>
+                <input v-model="createForm.config.appSecret" type="password" placeholder="微信公众号 AppSecret" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div class="p-4 rounded-lg border bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
+                <div class="flex items-start gap-3">
+                  <Icon icon="heroicons:information-circle" class="text-xl shrink-0 mt-0.5" />
+                  <p class="text-sm">渠道用于配置消息发送通道，创建后可在应用中引用</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 py-3 px-4 border-t border-gray-200 dark:border-gray-800">
+            <button class="px-4 py-2 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" @click="showCreateModal = false">取消</button>
+            <button :disabled="creating" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors" @click="handleCreate">
+              <Icon v-if="creating" icon="heroicons:arrow-path" class="text-base animate-spin" />
+              创建
+            </button>
+          </div>
         </div>
-      </template>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <UButton variant="ghost" @click="showCreateModal = false">取消</UButton>
-          <UButton :loading="creating" @click="handleCreate">创建</UButton>
-        </div>
-      </template>
-    </UModal>
+        <div class="fixed inset-0 bg-black/50 -z-10" @click="showCreateModal = false"></div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue';
 import type { Channel, CreateChannelInput } from '~/types';
 import { ChannelTypes } from '~/types';
 

@@ -4,16 +4,10 @@ import { resolve } from 'path';
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
-
-  // SPA mode
+  
+  devtools: { enabled: false },
   ssr: false,
 
-  // Route rules - empty for SPA mode
-  // EdgeOne CLI handles API routes (/v1/*, /send/*, /topic/*) via node-functions
-  routeRules: {},
-
-  // Output configuration
   nitro: {
     output: {
       dir: 'dist',
@@ -28,42 +22,26 @@ export default defineNuxtConfig({
     },
   },
 
-  // Copy edge-functions and node-functions after build
   hooks: {
     'nitro:build:public-assets': () => {
       const rootDir = process.cwd();
       const distDir = resolve(rootDir, 'dist');
 
-      // Copy edge-functions
-      cpSync(
-        resolve(rootDir, 'edge-functions'),
-        resolve(distDir, 'edge-functions'),
-        { recursive: true }
-      );
-
-      // Copy node-functions
-      cpSync(
-        resolve(rootDir, 'node-functions'),
-        resolve(distDir, 'node-functions'),
-        { recursive: true }
-      );
+      cpSync(resolve(rootDir, 'edge-functions'), resolve(distDir, 'edge-functions'), { recursive: true });
+      cpSync(resolve(rootDir, 'node-functions'), resolve(distDir, 'node-functions'), { recursive: true });
 
       console.log('✓ Copied edge-functions and node-functions to dist/');
     },
   },
 
-  // CSS
   css: ['~/assets/css/main.css'],
 
-  // Modules
-  modules: ['@pinia/nuxt', '@nuxt/ui'],
+  modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
 
-  // Color mode - default to light
-  colorMode: {
-    preference: 'light',
+  tailwindcss: {
+    cssPath: '~/assets/css/main.css',
   },
 
-  // Router middleware
   router: {
     options: {
       linkActiveClass: 'active',
@@ -71,7 +49,6 @@ export default defineNuxtConfig({
     },
   },
 
-  // App config
   app: {
     head: {
       title: 'EdgeOne Webhook Pusher',
@@ -82,6 +59,4 @@ export default defineNuxtConfig({
       ],
     },
   },
-
-
 });

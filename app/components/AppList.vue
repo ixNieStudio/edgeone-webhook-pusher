@@ -13,34 +13,41 @@
     >
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <UIcon name="i-heroicons-cube" class="text-blue-600 dark:text-blue-400 text-lg" />
+          <Icon icon="heroicons:cube" class="text-blue-600 dark:text-blue-400 text-lg" />
         </div>
         <div class="flex-1 min-w-0">
           <div class="font-medium text-sm truncate">{{ app.name }}</div>
           <div class="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
-            <UIcon name="i-heroicons-key" class="text-xs" />
+            <Icon icon="heroicons:key" class="text-xs" />
             {{ app.key }}
           </div>
         </div>
       </div>
       <div class="flex gap-1 mt-2">
-        <UBadge :color="app.pushMode === 'single' ? 'primary' : 'info'" variant="subtle" size="xs">
+        <span
+          class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+          :class="app.pushMode === 'single' ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'"
+        >
           {{ app.pushMode === 'single' ? '单播' : '订阅' }}
-        </UBadge>
-        <UBadge :color="app.messageType === 'template' ? 'warning' : 'neutral'" variant="subtle" size="xs">
+        </span>
+        <span
+          class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+          :class="app.messageType === 'template' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'"
+        >
           {{ app.messageType === 'template' ? '模板消息' : '普通消息' }}
-        </UBadge>
+        </span>
       </div>
     </div>
 
     <div v-if="apps.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
-      <UIcon name="i-heroicons-cube-transparent" class="text-4xl mb-2 opacity-50" />
+      <Icon icon="heroicons:cube-transparent" class="text-4xl mb-2 opacity-50" />
       <p class="text-sm">暂无应用</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue';
 import type { AppWithCount } from '~/types';
 
 defineProps<{

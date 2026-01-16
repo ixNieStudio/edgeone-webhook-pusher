@@ -1,88 +1,94 @@
 <template>
-  <UDashboardGroup storage="local" storage-key="dashboard">
-    <UDashboardSidebar
-      id="sidebar"
-      v-model:collapsed="sidebarCollapsed"
-      :collapsible="true"
-      :min-size="12"
-      :max-size="20"
-      :default-size="15"
-      :collapsed-size="4"
-      class="border-r border-gray-200 dark:border-gray-800"
+  <div class="flex h-screen bg-gray-50 dark:bg-gray-950">
+    <!-- Sidebar -->
+    <aside
+      :class="[
+        'fixed inset-y-0 left-0 z-50 flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300',
+        sidebarCollapsed ? 'w-16' : 'w-56',
+        'lg:relative',
+        mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      ]"
     >
-      <template #header="{ collapsed }">
-        <div class="flex items-center gap-2 p-4 cursor-pointer" @click="sidebarCollapsed = !sidebarCollapsed">
-          <UIcon name="i-heroicons-bolt" class="text-2xl text-primary shrink-0" />
-          <span v-if="!collapsed" class="font-semibold text-sm truncate">Webhook Pusher</span>
-        </div>
-      </template>
+      <!-- Logo -->
+      <div class="flex items-center gap-2 p-4 cursor-pointer border-b border-gray-200 dark:border-gray-800" @click="sidebarCollapsed = !sidebarCollapsed">
+        <Icon icon="heroicons:bolt" class="text-2xl text-blue-600 shrink-0" />
+        <span v-if="!sidebarCollapsed" class="font-semibold text-sm truncate">Webhook Pusher</span>
+      </div>
 
-      <UNavigationMenu
-        :items="menuItems"
-        orientation="vertical"
-        :ui="{ link: 'px-3 py-2' }"
-      />
+      <!-- Navigation -->
+      <nav class="flex-1 p-2 space-y-1 overflow-y-auto">
+        <NuxtLink
+          v-for="item in menuItems"
+          :key="item.to"
+          :to="item.to"
+          :class="[
+            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            route.path === item.to
+              ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+              : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
+          ]"
+          @click="mobileMenuOpen = false"
+        >
+          <Icon :icon="item.icon" class="text-lg shrink-0" />
+          <span v-if="!sidebarCollapsed">{{ item.label }}</span>
+        </NuxtLink>
+      </nav>
 
-      <template #footer="{ collapsed }">
-        <div class="p-2 space-y-2">
-          <!-- Color Mode Toggle -->
-          <UButton
-            variant="ghost"
-            class="w-full"
-            :class="collapsed ? 'justify-center' : 'justify-start'"
-            @click="toggleColorMode"
-          >
-            <UIcon :name="colorMode.value === 'dark' ? 'i-heroicons-sun' : 'i-heroicons-moon'" class="text-lg" />
-            <span v-if="!collapsed" class="ml-2">{{ colorMode.value === 'dark' ? '浅色模式' : '深色模式' }}</span>
-          </UButton>
-          
-          <!-- User Menu -->
-          <UDropdownMenu :items="userMenuItems">
-            <UButton
-              variant="ghost"
-              class="w-full"
-              :class="collapsed ? 'justify-center' : 'justify-start'"
-            >
-              <UIcon name="i-heroicons-user-circle" class="text-lg" />
-              <span v-if="!collapsed" class="ml-2">管理员</span>
-            </UButton>
-          </UDropdownMenu>
-        </div>
-      </template>
-    </UDashboardSidebar>
+      <!-- Footer -->
+      <div class="p-2 border-t border-gray-200 dark:border-gray-800 space-y-1">
+        <button
+          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+          @click="toggleColorMode"
+        >
+          <Icon :icon="isDark ? 'heroicons:sun' : 'heroicons:moon'" class="text-lg" />
+          <span v-if="!sidebarCollapsed">{{ isDark ? '浅色模式' : '深色模式' }}</span>
+        </button>
+        <button
+          class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+          @click="handleLogout"
+        >
+          <Icon icon="heroicons:arrow-right-on-rectangle" class="text-lg" />
+          <span v-if="!sidebarCollapsed">退出登录</span>
+        </button>
+      </div>
+    </aside>
 
+    <!-- Mobile overlay -->
+    <div
+      v-if="mobileMenuOpen"
+      class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+      @click="mobileMenuOpen = false"
+    />
+
+    <!-- Main content -->
     <div class="flex-1 flex flex-col min-w-0">
       <!-- Mobile header -->
       <header class="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-        <UButton
-          variant="ghost"
-          icon="i-heroicons-bars-3"
-          @click="sidebarCollapsed = !sidebarCollapsed"
-        />
+        <button class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" @click="mobileMenuOpen = true">
+          <Icon icon="heroicons:bars-3" class="text-xl" />
+        </button>
         <span class="font-medium">{{ pageTitle }}</span>
       </header>
 
-      <main class="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
+      <main class="flex-1 overflow-auto">
         <slot />
       </main>
     </div>
-  </UDashboardGroup>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue';
+import { showToast } from '~/composables/useToast';
 import { useAuthStore } from '~/stores/auth';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
-const toast = useToast();
-const colorMode = useColorMode();
 
 const sidebarCollapsed = ref(false);
-
-function toggleColorMode() {
-  colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark';
-}
+const mobileMenuOpen = ref(false);
+const isDark = ref(false);
 
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
@@ -96,61 +102,32 @@ const pageTitle = computed(() => {
   return titles[route.path] || 'Webhook Pusher';
 });
 
-const menuItems = computed(() => [
-  [{
-    label: '仪表盘',
-    icon: 'i-heroicons-home',
-    to: '/',
-    active: route.path === '/',
-  }],
-  [{
-    label: '渠道管理',
-    icon: 'i-heroicons-signal',
-    to: '/channels',
-    active: route.path === '/channels',
-  },
-  {
-    label: '应用管理',
-    icon: 'i-heroicons-cube',
-    to: '/apps',
-    active: route.path === '/apps',
-  },
-  {
-    label: '消息历史',
-    icon: 'i-heroicons-chat-bubble-left-right',
-    to: '/messages',
-    active: route.path === '/messages',
-  }],
-  [{
-    label: 'API 文档',
-    icon: 'i-heroicons-book-open',
-    to: '/api-docs',
-    active: route.path === '/api-docs',
-  },
-  {
-    label: '设置',
-    icon: 'i-heroicons-cog-6-tooth',
-    to: '/settings',
-    active: route.path === '/settings',
-  }],
-]);
+const menuItems = [
+  { label: '仪表盘', icon: 'heroicons:home', to: '/' },
+  { label: '渠道管理', icon: 'heroicons:signal', to: '/channels' },
+  { label: '应用管理', icon: 'heroicons:cube', to: '/apps' },
+  { label: '消息历史', icon: 'heroicons:chat-bubble-left-right', to: '/messages' },
+  { label: 'API 文档', icon: 'heroicons:book-open', to: '/api-docs' },
+  { label: '设置', icon: 'heroicons:cog-6-tooth', to: '/settings' },
+];
 
-const userMenuItems = [[
-  {
-    label: '退出登录',
-    icon: 'i-heroicons-arrow-right-on-rectangle',
-    onSelect: handleLogout,
-  },
-]];
+function toggleColorMode() {
+  isDark.value = !isDark.value;
+  document.documentElement.classList.toggle('dark', isDark.value);
+  localStorage.setItem('color-mode', isDark.value ? 'dark' : 'light');
+}
 
 function handleLogout() {
   auth.logout();
-  toast.add({ title: '已退出登录', color: 'success' });
+  showToast('已退出登录', 'success');
   router.push('/login');
 }
 
-// Check responsive on mount
 onMounted(() => {
+  const saved = localStorage.getItem('color-mode');
+  isDark.value = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.classList.toggle('dark', isDark.value);
+  
   if (window.innerWidth < 1024) {
     sidebarCollapsed.value = true;
   }

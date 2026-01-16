@@ -3,86 +3,122 @@
     <h1 class="text-2xl font-semibold mb-6">系统设置</h1>
 
     <div v-if="loading" class="flex justify-center py-12">
-      <UIcon name="i-heroicons-arrow-path" class="text-3xl animate-spin text-gray-400" />
+      <Icon icon="heroicons:arrow-path" class="text-3xl animate-spin text-gray-400" />
     </div>
 
     <div v-else class="space-y-6">
       <!-- Channel Link -->
-      <UCard>
-        <template #header>
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
           <div class="flex items-center justify-between">
             <span class="font-medium">微信公众号配置</span>
             <NuxtLink to="/channels">
-              <UButton variant="ghost" size="sm" trailing-icon="i-heroicons-arrow-right">
+              <button class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 前往渠道管理
-              </UButton>
+                <Icon icon="heroicons:arrow-right" class="text-base" />
+              </button>
             </NuxtLink>
           </div>
-        </template>
-        <UAlert color="info" icon="i-heroicons-information-circle">
-          <template #description>
-            微信公众号配置已移至渠道管理，请在渠道管理中创建和配置微信渠道。
-          </template>
-        </UAlert>
-      </UCard>
+        </div>
+        <div class="p-4">
+          <div class="p-4 rounded-lg border bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
+            <div class="flex items-start gap-3">
+              <Icon icon="heroicons:information-circle" class="text-xl shrink-0 mt-0.5" />
+              <p class="text-sm">微信公众号配置已移至渠道管理，请在渠道管理中创建和配置微信渠道。</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Rate Limit Config -->
-      <UCard>
-        <template #header>
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
           <span class="font-medium">速率限制</span>
-        </template>
-        <UFormField label="每分钟限制">
-          <div class="flex items-center gap-3">
-            <UInput
-              v-model.number="formData.rateLimit.perMinute"
-              type="number"
-              :min="1"
-              :max="100"
-              class="w-32"
-            />
-            <span class="text-sm text-gray-500 dark:text-gray-400">每个应用每分钟最多发送的消息数</span>
+        </div>
+        <div class="p-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">每分钟限制</label>
+            <div class="flex items-center gap-3">
+              <input
+                v-model.number="formData.rateLimit.perMinute"
+                type="number"
+                :min="1"
+                :max="100"
+                class="w-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              />
+              <span class="text-sm text-gray-500 dark:text-gray-400">每个应用每分钟最多发送的消息数</span>
+            </div>
           </div>
-        </UFormField>
-      </UCard>
+        </div>
+      </div>
 
       <!-- Retention Config -->
-      <UCard>
-        <template #header>
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
           <span class="font-medium">数据保留</span>
-        </template>
-        <UFormField label="保留天数">
-          <div class="flex items-center gap-3">
-            <UInput
-              v-model.number="formData.retention.days"
-              type="number"
-              :min="1"
-              :max="365"
-              class="w-32"
-            />
-            <span class="text-sm text-gray-500 dark:text-gray-400">消息历史记录保留天数</span>
+        </div>
+        <div class="p-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">保留天数</label>
+            <div class="flex items-center gap-3">
+              <input
+                v-model.number="formData.retention.days"
+                type="number"
+                :min="1"
+                :max="365"
+                class="w-32 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              />
+              <span class="text-sm text-gray-500 dark:text-gray-400">消息历史记录保留天数</span>
+            </div>
           </div>
-        </UFormField>
-      </UCard>
+        </div>
+      </div>
 
       <!-- Save Button -->
       <div class="flex justify-end">
-        <UButton :loading="saving" icon="i-heroicons-check" @click="handleSave">
+        <button
+          :disabled="saving"
+          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          @click="handleSave"
+        >
+          <Icon v-if="saving" icon="heroicons:arrow-path" class="text-base animate-spin" />
+          <Icon v-else icon="heroicons:check" class="text-base" />
           保存配置
-        </UButton>
+        </button>
       </div>
 
       <!-- Help Section -->
-      <UCard>
-        <template #header>
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
           <span class="font-medium">配置帮助</span>
-        </template>
-        <UAccordion :items="helpItems" />
-      </UCard>
+        </div>
+        <div class="p-4">
+          <div class="divide-y divide-gray-200 dark:divide-gray-700">
+            <div v-for="(item, index) in helpItems" :key="index">
+              <button
+                class="py-3 inline-flex items-center justify-between gap-x-3 w-full font-medium text-start text-gray-800 hover:text-gray-500 dark:text-gray-200 dark:hover:text-gray-400 transition-colors"
+                :class="{ 'text-primary-600 dark:text-primary-400': expandedHelp === index }"
+                @click="expandedHelp = expandedHelp === index ? null : index"
+              >
+                {{ item.label }}
+                <Icon :icon="expandedHelp === index ? 'heroicons:chevron-up' : 'heroicons:chevron-down'" class="text-base" />
+              </button>
+              <div
+                v-show="expandedHelp === index"
+                class="pb-4 overflow-hidden"
+              >
+                <pre class="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{{ item.content }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { Icon } from '@iconify/vue';
 import type { SystemConfig } from '~/types';
 
 definePageMeta({
@@ -92,11 +128,10 @@ definePageMeta({
 const api = useApi();
 const toast = useToast();
 
-// State
 const loading = ref(true);
 const saving = ref(false);
+const expandedHelp = ref<number | null>(null);
 
-// Form data (without wechat config)
 const formData = reactive({
   rateLimit: {
     perMinute: 5,
@@ -132,7 +167,6 @@ const helpItems = [
   },
 ];
 
-// Load config
 async function loadConfig() {
   loading.value = true;
   try {
@@ -149,7 +183,6 @@ async function loadConfig() {
   }
 }
 
-// Save config
 async function handleSave() {
   saving.value = true;
   try {
