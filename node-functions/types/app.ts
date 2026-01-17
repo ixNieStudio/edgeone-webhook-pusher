@@ -15,6 +15,10 @@ export interface App {
   templateId?: string;
   createdAt: string;
   updatedAt: string;
+  
+  // 体验模式字段
+  isDemoApp?: boolean;      // 是否为体验应用
+  demoCreatedAt?: string;   // 体验应用创建时间（用于计算过期）
 }
 
 export interface CreateAppInput {

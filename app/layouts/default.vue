@@ -107,6 +107,7 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const { isDark, toggle, init } = useTheme();
+const config = useRuntimeConfig();
 
 const sidebarCollapsed = ref(false);
 const mobileMenuOpen = ref(false);
@@ -123,14 +124,27 @@ const pageTitle = computed(() => {
   return titles[route.path] || 'Webhook Pusher';
 });
 
-const menuItems = [
-  { label: '仪表盘', icon: 'tabler:dashboard', to: '/' },
-  { label: '渠道管理', icon: 'tabler:broadcast', to: '/channels' },
-  { label: '应用管理', icon: 'tabler:apps', to: '/apps' },
-  { label: '消息历史', icon: 'tabler:message-2', to: '/messages' },
-  { label: 'API 文档', icon: 'tabler:file-code', to: '/api-docs' },
-  { label: '设置', icon: 'tabler:settings', to: '/settings' },
-];
+// 根据体验模式和当前路径动态生成菜单项
+const menuItems = computed(() => {
+  const allItems = [
+    { label: '仪表盘', icon: 'tabler:dashboard', to: '/' },
+    { label: '渠道管理', icon: 'tabler:broadcast', to: '/channels' },
+    { label: '应用管理', icon: 'tabler:apps', to: '/apps' },
+    { label: '消息历史', icon: 'tabler:message-2', to: '/messages' },
+    { label: 'API 文档', icon: 'tabler:file-code', to: '/api-docs' },
+    { label: '设置', icon: 'tabler:settings', to: '/settings' },
+  ];
+
+  // 在体验模式下，如果在根路径（体验前端），隐藏渠道管理
+  const isDemoMode = config.public.demoMode;
+  const isOnRootPath = !route.path.startsWith('/admin');
+  
+  if (isDemoMode && isOnRootPath) {
+    return allItems.filter(item => item.to !== '/channels');
+  }
+  
+  return allItems;
+});
 
 function handleToggleTheme() {
   toggle();

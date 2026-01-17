@@ -8,6 +8,14 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   ssr: false,
 
+  // 运行时配置
+  runtimeConfig: {
+    public: {
+      demoMode: process.env.DEMO_MODE === 'true',
+      adminBasePath: process.env.DEMO_MODE === 'true' ? '/admin' : '',
+    },
+  },
+
   // 开发模式代理配置
   // 将 /v1/* 请求代理到本地 Node Functions 服务器
   // rewrite 去掉 /v1 前缀，因为 Node Functions 本地运行时路由不带 /v1

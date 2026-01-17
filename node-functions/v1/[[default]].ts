@@ -25,6 +25,7 @@ import {
   messagesRouter,
   statsRouter,
   wechatMsgRouter,
+  demoAppsRouter,
 } from '../routes/index.js';
 
 // KV 客户端
@@ -110,6 +111,9 @@ router.use(statsRouter.allowedMethods());
 
 router.use(wechatMsgRouter.routes());
 router.use(wechatMsgRouter.allowedMethods());
+
+router.use(demoAppsRouter.routes());
+router.use(demoAppsRouter.allowedMethods());
 
 // 注册主路由
 app.use(router.routes());

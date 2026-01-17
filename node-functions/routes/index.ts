@@ -12,3 +12,4 @@ export { default as bindcodeRouter } from './bindcode.js';
 export { default as messagesRouter } from './messages.js';
 export { default as statsRouter } from './stats.js';
 export { default as wechatMsgRouter } from './wechat-msg.js';
+export { default as demoAppsRouter } from './demo-apps.js';
