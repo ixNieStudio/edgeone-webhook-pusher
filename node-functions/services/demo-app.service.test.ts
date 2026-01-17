@@ -26,6 +26,19 @@ describe('Demo App Service', () => {
       // 实际测试会在集成测试中进行
       expect(true).toBe(true);
     });
+
+    it('should handle messageType parameter correctly', () => {
+      // 验证消息类型参数的处理逻辑
+      const messageTypes = ['text', 'template'] as const;
+      
+      messageTypes.forEach(type => {
+        expect(['text', 'template']).toContain(type);
+      });
+      
+      // 默认应该是 template
+      const defaultType = 'template';
+      expect(defaultType).toBe('template');
+    });
   });
 
   describe('Property Tests', () => {

@@ -106,19 +106,100 @@
         </div>
 
         <!-- Empty State -->
-        <div v-else class="text-center py-12">
-          <Icon icon="heroicons:cube-transparent" class="text-6xl text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-          <h3 class="text-lg font-semibold mb-2">开始体验</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            创建您的第一个体验应用，快速测试微信公众号推送功能
-          </p>
-          <button
-            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-            @click="showCreateModal = true"
-          >
-            <Icon icon="heroicons:plus" class="text-base" />
-            创建第一个应用
-          </button>
+        <div v-else class="space-y-6">
+          <!-- Usage Guide -->
+          <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <div class="flex items-center gap-2">
+                <Icon icon="heroicons:book-open" class="text-primary-600 text-xl" />
+                <span class="font-medium">快速开始指南</span>
+              </div>
+            </div>
+            <div class="p-4">
+              <!-- 欢迎说明 -->
+              <div class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div class="flex items-start gap-2">
+                  <Icon icon="heroicons:information-circle" class="text-blue-500 text-lg shrink-0 mt-0.5" />
+                  <div class="text-sm text-blue-700 dark:text-blue-400">
+                    <div class="font-medium mb-1">欢迎体验微信消息推送系统</div>
+                    <div class="text-xs">体验模式已自动配置好测试渠道和模板，您只需创建应用、绑定微信即可测试推送功能。应用数据将在 3 天后自动删除。</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <!-- Step 1 -->
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                    <span class="text-primary-600 font-medium text-sm">1</span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-medium text-sm">创建体验应用</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      点击下方「创建第一个应用」按钮，输入应用名称并选择推送模式（单播或订阅）。系统会自动使用测试渠道和模板配置。
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                    <span class="text-primary-600 font-medium text-sm">2</span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-medium text-sm">绑定微信用户</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      创建应用后，点击「生成绑定码」获取 6 位数字绑定码。在微信公众号中发送「绑定 XXXXXX」完成绑定（XXXXXX 为绑定码）。
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
+                    <span class="text-primary-600 font-medium text-sm">3</span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-medium text-sm">发送测试消息</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      复制应用的 Webhook URL，在浏览器中访问或使用 curl 命令发送测试消息。
+                    </div>
+                    <div class="mt-2">
+                      <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">示例：</div>
+                      <pre class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded overflow-x-auto">curl "https://your-domain.com/send/APP_KEY?title=测试&desp=内容"</pre>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 额外提示 -->
+              <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                <div class="text-xs text-gray-600 dark:text-gray-400">
+                  <div class="font-medium mb-1">推送模式说明</div>
+                  <ul class="list-disc list-inside space-y-0.5 text-gray-500 dark:text-gray-500">
+                    <li><strong>单播</strong>：只发送给第一个绑定的用户，适合个人通知</li>
+                    <li><strong>订阅</strong>：发送给所有绑定的用户，适合群发通知</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Create First App CTA -->
+          <div class="text-center py-8">
+            <Icon icon="heroicons:cube-transparent" class="text-6xl text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+            <h3 class="text-lg font-semibold mb-2">开始体验</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              创建您的第一个体验应用，快速测试微信公众号推送功能
+            </p>
+            <button
+              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+              @click="showCreateModal = true"
+            >
+              <Icon icon="heroicons:plus" class="text-base" />
+              创建第一个应用
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -170,6 +251,35 @@
                       class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
                     />
                     <span class="text-sm text-gray-700 dark:text-gray-300">订阅（发送给所有绑定用户）</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">消息类型</label>
+                <div class="space-y-2">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      v-model="createForm.messageType"
+                      value="template"
+                      class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                    />
+                    <div class="flex-1">
+                      <span class="text-sm text-gray-700 dark:text-gray-300">模板消息（推荐）</span>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">无时间限制，体验模式自动使用测试模板</p>
+                    </div>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      v-model="createForm.messageType"
+                      value="text"
+                      class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                    />
+                    <div class="flex-1">
+                      <span class="text-sm text-gray-700 dark:text-gray-300">文本消息</span>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">有 48 小时限制</p>
+                    </div>
                   </label>
                 </div>
               </div>
@@ -229,6 +339,7 @@ const bindCodes = ref<Record<string, { code: string; expiresIn: string }>>({});
 const createForm = ref<DemoAppCreateInput>({
   name: '',
   pushMode: 'single',
+  messageType: 'template',
 });
 
 onMounted(() => {
@@ -301,9 +412,10 @@ async function handleGenerateCode(appId: string) {
   try {
     const res = await demoApps.generateBindCode(appId);
     if (res.success && res.data) {
+      const expiresInSeconds = Math.floor((res.data.expiresAt - Date.now()) / 1000);
       bindCodes.value[appId] = {
-        code: res.data.code,
-        expiresIn: `${Math.floor(res.data.expiresIn / 60)} 分钟后过期`,
+        code: res.data.bindCode,
+        expiresIn: `${Math.floor(expiresInSeconds / 60)} 分钟后过期`,
       };
       toast.add({ title: '绑定码生成成功', color: 'success' });
     } else {
@@ -334,6 +446,7 @@ function resetCreateForm() {
   createForm.value = {
     name: '',
     pushMode: 'single',
+    messageType: 'template',
   };
 }
 </script>

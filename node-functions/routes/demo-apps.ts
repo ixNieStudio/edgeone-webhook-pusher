@@ -12,7 +12,7 @@ import { demoAppService } from '../services/demo-app.service.js';
 import { appService } from '../services/app.service.js';
 import { cleanupService } from '../services/cleanup.service.js';
 import { ApiError } from '../types/index.js';
-import type { PushMode } from '../types/app.js';
+import type { PushMode, MessageType } from '../types/app.js';
 
 const router = new Router({ prefix: '/demo/apps' });
 
@@ -84,7 +84,7 @@ router.post('/', async (ctx: AppContext) => {
   // 触发清理任务
   cleanupService.triggerCleanup().catch(console.error);
 
-  const body = ctx.request.body as { name: string; pushMode: PushMode } | undefined;
+  const body = ctx.request.body as { name: string; pushMode: PushMode; messageType?: MessageType } | undefined;
 
   if (!body) {
     throw ApiError.badRequest('Request body is required');

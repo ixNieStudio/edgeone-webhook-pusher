@@ -8,7 +8,7 @@
 
 import { appsKV } from '../shared/kv-client.js';
 import { now } from '../shared/utils.js';
-import type { App, PushMode } from '../types/index.js';
+import type { App, PushMode, MessageType } from '../types/index.js';
 import { KVKeys, MessageTypes, ApiError } from '../types/index.js';
 import { appService } from './app.service.js';
 import { channelService } from './channel.service.js';
@@ -22,20 +22,24 @@ class DemoAppService {
    * 创建体验应用
    * 自动注入固定模板ID和第一个可用渠道
    */
-  async create(data: { name: string; pushMode: PushMode }): Promise<App> {
+  async create(data: { name: string; pushMode: PushMode; messageType?: MessageType }): Promise<App> {
     // 获取第一个渠道
     const channels = await channelService.list();
     if (channels.length === 0) {
       throw ApiError.badRequest('No channels available in demo mode');
     }
 
+    // 确定消息类型，默认为模板消息
+    const messageType = data.messageType || MessageTypes.TEMPLATE;
+
     // 构造完整的创建数据（注入固定配置）
     const createData = {
       name: data.name,
       channelId: channels[0].id,
       pushMode: data.pushMode,
-      messageType: MessageTypes.TEMPLATE,
-      templateId: DEMO_TEMPLATE_ID,
+      messageType,
+      // 只有模板消息才需要 templateId
+      ...(messageType === MessageTypes.TEMPLATE && { templateId: DEMO_TEMPLATE_ID }),
     };
 
     // 调用原有的 appService.create

@@ -10,10 +10,18 @@ import type { ApiResponse, AppWithCount, CreateBindCodeResponse, BindCodeStatusR
 export interface DemoAppCreateInput {
   name: string;
   pushMode: 'single' | 'subscribe';
+  messageType?: 'text' | 'template';
 }
 
 export interface DemoAppWithInfo extends AppWithCount {
   daysRemaining?: number;
+}
+
+// Custom response type for demo apps composable
+export interface DemoApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
 }
 
 export function useDemoApps() {
@@ -24,10 +32,10 @@ export function useDemoApps() {
    * 发送请求（不带认证）
    */
   async function request<T>(
-    method: string,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     url: string,
     data?: any
-  ): Promise<ApiResponse<T>> {
+  ): Promise<DemoApiResponse<T>> {
     try {
       const response = await $fetch<T>(`${baseURL}${url}`, {
         method,
@@ -52,42 +60,42 @@ export function useDemoApps() {
   /**
    * 获取体验应用列表
    */
-  function list(): Promise<ApiResponse<DemoAppWithInfo[]>> {
+  function list(): Promise<DemoApiResponse<DemoAppWithInfo[]>> {
     return request<DemoAppWithInfo[]>('GET', '/demo/apps');
   }
 
   /**
    * 创建体验应用
    */
-  function create(data: DemoAppCreateInput): Promise<ApiResponse<DemoAppWithInfo>> {
+  function create(data: DemoAppCreateInput): Promise<DemoApiResponse<DemoAppWithInfo>> {
     return request<DemoAppWithInfo>('POST', '/demo/apps', data);
   }
 
   /**
    * 获取体验应用详情
    */
-  function getById(id: string): Promise<ApiResponse<DemoAppWithInfo>> {
+  function getById(id: string): Promise<DemoApiResponse<DemoAppWithInfo>> {
     return request<DemoAppWithInfo>('GET', `/demo/apps/${id}`);
   }
 
   /**
    * 删除体验应用
    */
-  function deleteApp(id: string): Promise<ApiResponse<void>> {
+  function deleteApp(id: string): Promise<DemoApiResponse<void>> {
     return request<void>('DELETE', `/demo/apps/${id}`);
   }
 
   /**
    * 生成绑定码
    */
-  function generateBindCode(appId: string): Promise<ApiResponse<CreateBindCodeResponse>> {
+  function generateBindCode(appId: string): Promise<DemoApiResponse<CreateBindCodeResponse>> {
     return request<CreateBindCodeResponse>('POST', `/demo/apps/${appId}/bindcode`, {});
   }
 
   /**
    * 查询绑定码状态
    */
-  function getBindCodeStatus(appId: string, code: string): Promise<ApiResponse<BindCodeStatusResponse>> {
+  function getBindCodeStatus(appId: string, code: string): Promise<DemoApiResponse<BindCodeStatusResponse>> {
     return request<BindCodeStatusResponse>('GET', `/demo/apps/${appId}/bindcode/${code}`);
   }
 
