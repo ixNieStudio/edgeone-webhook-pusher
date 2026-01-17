@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+  <div v-if="shouldShowBindCard" class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
     <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
       <div class="flex items-center justify-between">
         <span class="font-medium">微信绑定</span>
@@ -127,6 +127,8 @@ interface BindCodeInfo {
 
 const props = defineProps<{
   appId: string;
+  pushMode?: string;
+  boundUserCount?: number;
 }>();
 
 const api = useApi();
@@ -137,6 +139,16 @@ const generating = ref(false);
 const remainingTime = ref('');
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+// 计算是否应该显示绑定卡片
+const shouldShowBindCard = computed(() => {
+  // 单播模式且已有绑定用户时，隐藏绑定卡片
+  if (props.pushMode === 'single' && (props.boundUserCount ?? 0) > 0) {
+    return false;
+  }
+  // 其他情况都显示
+  return true;
+});
 
 onMounted(() => {
   // Start polling if there's an active bind code

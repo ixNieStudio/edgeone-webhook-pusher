@@ -83,7 +83,22 @@
     </div>
 
     <!-- WeChat Binding -->
-    <BindCodeCard :app-id="app.id" />
+    <BindCodeCard 
+      :app-id="app.id" 
+      :push-mode="app.pushMode"
+      :bound-user-count="openIds.length"
+    />
+
+    <!-- Single Mode Limit Notice -->
+    <div v-if="app.pushMode === 'single' && openIds.length > 0" class="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-4">
+      <div class="flex items-start gap-2">
+        <Icon icon="heroicons:information-circle" class="text-blue-500 text-lg shrink-0 mt-0.5" />
+        <div class="text-sm text-blue-700 dark:text-blue-400">
+          <div class="font-medium mb-1">单播模式限制</div>
+          <div class="text-xs">单播模式只能绑定一个用户。如需绑定其他用户，请先删除当前绑定用户。</div>
+        </div>
+      </div>
+    </div>
 
     <!-- OpenID Management -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
@@ -95,8 +110,9 @@
           <div class="flex justify-center mb-2">
             <Icon icon="heroicons:user-minus" class="text-3xl opacity-50" />
           </div>
-          <p class="text-sm">暂无绑定用户</p>
-          <p class="text-xs mt-1">请使用上方「微信绑定」功能添加用户</p>
+          <p class="text-sm font-medium">暂无绑定用户</p>
+          <p class="text-xs mt-1">使用上方「微信绑定」功能生成绑定码</p>
+          <p class="text-xs text-gray-400 mt-1">用户关注公众号后扫码或发送绑定码即可完成绑定</p>
         </div>
 
         <div v-else class="space-y-2">
@@ -105,24 +121,27 @@
             :key="item.id"
             class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
           >
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
               <img 
                 v-if="item.avatar" 
                 :src="item.avatar" 
-                class="w-10 h-10 rounded-full"
+                class="w-10 h-10 rounded-full shrink-0"
                 alt="用户头像"
               />
-              <div v-else class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
+              <div v-else class="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
                 <Icon icon="heroicons:user" class="text-lg text-primary-600" />
               </div>
-              <div>
-                <div class="font-medium text-sm">{{ item.nickname || item.openId }}</div>
-                <div v-if="item.nickname" class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ item.openId }}</div>
-                <div v-if="item.remark" class="text-xs text-gray-400">{{ item.remark }}</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm truncate">{{ item.nickname || item.openId }}</div>
+                <div v-if="item.nickname" class="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">{{ item.openId }}</div>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span class="text-xs text-gray-400">绑定于 {{ formatDateTime(item.createdAt) }}</span>
+                  <span v-if="item.remark" class="text-xs text-gray-400">• {{ item.remark }}</span>
+                </div>
               </div>
             </div>
             <button
-              class="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+              class="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 rounded hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0"
               @click="handleDeleteOpenId(item)"
             >
               <Icon icon="heroicons:trash" class="text-base" />

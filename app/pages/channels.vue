@@ -37,17 +37,19 @@
           @update="fetchChannels"
           @delete="handleDelete"
         />
-        <EmptyState
-          v-else
-          icon="i-heroicons-cursor-arrow-rays"
-          message="选择一个渠道查看详情"
-        >
-          <template #action>
-            <button v-if="channels.length === 0" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors" @click="showCreateModal = true">
+        <div v-else class="max-w-4xl mx-auto">
+          <div class="text-center mb-6">
+            <h2 class="text-xl font-semibold mb-2">{{ channels.length === 0 ? '开始使用微信公众号推送' : '微信公众号配置指引' }}</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ channels.length === 0 ? '按照以下步骤配置您的第一个渠道' : '选择左侧渠道查看详情，或参考以下配置指引' }}</p>
+          </div>
+          <ChannelConfigGuide channel-id="demo" hide-verify />
+          <div v-if="channels.length === 0" class="mt-6 text-center">
+            <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors" @click="showCreateModal = true">
+              <Icon icon="heroicons:plus" class="text-base" />
               创建第一个渠道
             </button>
-          </template>
-        </EmptyState>
+          </div>
+        </div>
       </div>
     </template>
 

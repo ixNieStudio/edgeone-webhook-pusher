@@ -38,16 +38,19 @@
           @update="fetchData"
           @delete="handleDelete"
         />
+        <UsageGuide
+          v-else-if="apps.length > 0"
+        />
         <EmptyState
           v-else
           icon="i-heroicons-cursor-arrow-rays"
-          message="选择一个应用查看详情"
+          message="开始创建你的第一个应用"
         >
           <template #action>
-            <button v-if="apps.length === 0 && channels.length > 0" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors" @click="showCreateModal = true">
+            <button v-if="channels.length > 0" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors" @click="showCreateModal = true">
               创建第一个应用
             </button>
-            <div v-else-if="channels.length === 0" class="text-sm text-gray-500">
+            <div v-else class="text-sm text-gray-500">
               请先 <NuxtLink to="/channels" class="text-primary-600 hover:underline">创建渠道</NuxtLink>
             </div>
           </template>
@@ -74,6 +77,7 @@
           <div v-if="loading" class="flex justify-center py-8">
             <Icon icon="heroicons:arrow-path" class="text-2xl animate-spin text-gray-400" />
           </div>
+          <UsageGuide v-else-if="apps.length === 0" />
           <AppList
             v-else
             :apps="apps"
@@ -147,15 +151,40 @@
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">消息类型</label>
                 <div class="space-y-2">
-                  <label v-for="opt in messageTypeOptions" :key="opt.value" class="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" v-model="createForm.messageType" :value="opt.value" class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500" />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+                  <label v-for="opt in messageTypeOptions" :key="opt.value" class="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" v-model="createForm.messageType" :value="opt.value" class="w-4 h-4 mt-0.5 text-primary-600 border-gray-300 focus:ring-primary-500" />
+                    <div class="flex-1">
+                      <span class="text-sm text-gray-700 dark:text-gray-300">{{ opt.label }}</span>
+                      <p v-if="opt.description" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ opt.description }}</p>
+                    </div>
                   </label>
+                </div>
+              </div>
+              <!-- Template Message Guide -->
+              <div v-if="createForm.messageType === 'template'" class="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <div class="flex items-start gap-2 mb-2">
+                  <Icon icon="heroicons:light-bulb" class="text-yellow-600 dark:text-yellow-400 text-lg shrink-0 mt-0.5" />
+                  <div class="flex-1">
+                    <div class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">模板消息配置要求</div>
+                    <div class="text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+                      使用模板消息需要先在微信公众平台创建模板。推荐使用以下格式（可突破48小时限制）：
+                    </div>
+                    <pre class="text-xs bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1.5 rounded mb-2 overflow-x-auto" v-pre>标题：{{first.DATA}}
+内容：{{keyword1.DATA}}
+备注：{{remark.DATA}}</pre>
+                    <div class="text-xs text-yellow-700 dark:text-yellow-400 mb-1 font-medium">Webhook 参数映射：</div>
+                    <ul class="text-xs text-yellow-700 dark:text-yellow-400 space-y-0.5">
+                      <li>• <code class="bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded">title</code> → <code class="bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded">first</code> (消息标题)</li>
+                      <li>• <code class="bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded">desp</code> → <code class="bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded">keyword1</code> (消息内容)</li>
+                      <li>• 备注信息自动填充到 <code class="bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded">remark</code></li>
+                    </ul>
+                  </div>
                 </div>
               </div>
               <div v-if="createForm.messageType === 'template'">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">模板 ID</label>
                 <input v-model="templateId" placeholder="微信模板消息 ID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">在微信公众平台创建模板后获得的模板 ID</p>
               </div>
               <div class="p-4 rounded-lg border bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
                 <div class="flex items-start gap-3">
@@ -226,8 +255,28 @@ const pushModeOptions = [
 ];
 
 const messageTypeOptions = [
-  { label: '普通消息', value: MessageTypes.NORMAL },
-  { label: '模板消息', value: MessageTypes.TEMPLATE },
+  { 
+    label: '普通消息', 
+    value: MessageTypes.NORMAL,
+    description: '客服消息，48小时内可推送。建议用户打开公众号定位推送以保持互动。'
+  },
+  { 
+    label: '模板消息', 
+    value: MessageTypes.TEMPLATE,
+    description: '无48小时限制。正式公众号已停止新申请，推荐使用测试号自定义模板。',
+    templateGuide: {
+      title: '模板消息配置要求',
+      content: '使用模板消息需要先在微信公众平台创建模板，推荐使用以下格式：',
+      example: `标题：{{first.DATA}}
+内容：{{keyword1.DATA}}
+备注：{{remark.DATA}}`,
+      fieldMapping: [
+        { templateField: 'first', webhookParam: 'title', description: '消息标题' },
+        { templateField: 'keyword1', webhookParam: 'desp', description: '消息内容' },
+        { templateField: 'remark', webhookParam: '(自动)', description: '备注信息' }
+      ]
+    }
+  },
 ];
 
 // Check responsive
