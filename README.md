@@ -1,8 +1,34 @@
 # EdgeOne Webhook Pusher
 
-> 🚀 免费白嫖的微信消息推送服务，一键部署到 EdgeOne Pages，无需服务器
+> 🚀 **0成本自建微信推送神器** - 白嫖 EdgeOne + 微信测试号，5分钟搞定专属推送服务
 
 [![Deploy to EdgeOne](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?template=https://github.com/ixNieStudio/edgeone-webhook-pusher)
+
+**🎯 在线体验：[https://webhook-pusher.ixnie.cn/](https://webhook-pusher.ixnie.cn/)** - 无需登录，快速体验所有功能
+
+---
+
+## 💡 为什么选择这个项目？
+
+### 与主流方案对比
+
+| 对比项 | 本项目 | Server酱 | 认证公众号 |
+|--------|--------|----------|-----------|
+| 💰 **成本** | **完全免费** | ¥49/年起 | 需认证费用 |
+| 🔒 **数据归属** | **自建自托管** | 第三方托管 | 腾讯托管 |
+| ⚡ **部署难度** | **一键部署（5分钟）** | 简单 | 复杂 |
+| 📊 **推送限制** | **无限制** | 免费版有次数限制 | 48小时限制 |
+| 🛠️ **自定义** | **完全可控** | 有限 | 有限 |
+| 🔐 **数据安全** | **完全掌控** | 依赖第三方 | 依赖腾讯 |
+
+### 核心优势
+
+- ✅ **完全免费** - 白嫖 EdgeOne Pages 免费额度，永久免费使用
+- ✅ **数据自托管** - 部署在自己账号下，数据完全掌控，安全可靠
+- ✅ **一键部署** - 5分钟搞定，无需服务器、无需运维
+- ✅ **微信测试号** - 用测试号就能满足所有需求，可自定义模板，突破48小时限制
+- ✅ **无推送限制** - 想推多少推多少，没有任何次数限制
+- ✅ **开源透明** - 代码完全开源，可审计、可二次开发
 
 > 本项目由 [Tencent EdgeOne](https://edgeone.ai) 提供 CDN 加速和安全防护赞助
 > 
@@ -12,11 +38,11 @@
 
 <table>
   <tr>
-    <td><img src="docs/imgs/1.%20login.png" alt="登录页面" /></td>
+    <td><img src="docs/imgs/wechat.jpg" alt="微信推送效果" /></td>
     <td><img src="docs/imgs/2.%20home.png" alt="首页" /></td>
   </tr>
   <tr>
-    <td align="center">登录页面</td>
+    <td align="center">微信推送效果</td>
     <td align="center">首页概览</td>
   </tr>
   <tr>
@@ -29,18 +55,19 @@
   </tr>
   <tr>
     <td><img src="docs/imgs/5.%20messages.png" alt="消息历史" /></td>
-    <td><img src="docs/imgs/6.%20api-docs.png" alt="API 文档" /></td>
+    <td><img src="docs/imgs/1.%20login.png" alt="登录页面" /></td>
   </tr>
   <tr>
     <td align="center">消息历史</td>
-    <td align="center">API 文档</td>
+    <td align="center">登录页面</td>
   </tr>
 </table>
 
 ## ✨ 功能特性
 
-- 🆓 **完全免费** - 部署在 EdgeOne Pages 免费套餐，无需付费
+- 🆓 **完全免费** - 白嫖 EdgeOne Pages 免费额度，永久免费使用
 - ⚡ **一键部署** - 点击按钮即可部署，无需服务器、无需运维
+- 🎁 **体验模式** - 无需登录即可体验，快速了解所有功能
 - 📱 **微信推送** - 支持微信公众号模板消息和客服消息，消息直达微信
 - 🔗 **Webhook 风格** - 简单 URL 调用，一行代码搞定推送
 - 🔑 **多应用管理** - 为不同场景创建独立应用，互不干扰
@@ -48,11 +75,69 @@
 - 📋 **模板消息** - 支持微信模板消息，突破 48 小时限制
 - 🎛️ **Web 控制台** - 可视化管理界面，配置更简单
 - 📊 **消息历史** - 完整的消息发送记录和状态追踪
-- 🔒 **数据自主** - 数据存储在你自己的账户，完全可控
+- 🏠 **数据自托管** - 数据存储在你自己的账户，完全可控
+- 🌍 **全球加速** - EdgeOne 边缘节点，全球低延迟
+- 🌓 **深色模式** - 支持 Light/Dark 主题切换
+
+## 🎯 适用场景
+
+### 🏠 HomeLab / 家庭实验室
+- **NAS 通知** - 群晖/威联通下载完成、备份状态、存储空间告警
+- **路由器监控** - OpenWrt 设备上线、网络断线、流量统计
+- **智能家居** - Home Assistant 传感器告警、设备状态变化
+- **树莓派项目** - 环境监控、摄像头监控、定时任务结果
+
+### 💻 开发运维
+- **CI/CD 通知** - GitHub Actions 部署成功/失败、构建结果
+- **服务器监控** - CPU/内存/磁盘告警、服务异常通知
+- **错误追踪** - Sentry 生产环境报错、异常堆栈推送
+- **定时任务** - Cron 任务执行结果、数据处理完成
+
+### 🤖 自动化工作流
+- **爬虫通知** - 数据采集完成、价格监控、库存变化
+- **签到脚本** - 青龙面板签到结果、积分变化
+- **RSS 监控** - 订阅源更新、关键词匹配
+- **API 监控** - 接口性能、错误率、第三方服务状态
+
+## 💬 用户案例
+
+> 欢迎提交你的使用案例！在 [GitHub Discussions](https://github.com/ixNieStudio/edgeone-webhook-pusher/discussions) 分享你的创意场景
+
+**案例 1：群晖 NAS 下载完成通知**
+```bash
+# 在 Download Station 完成脚本中添加
+curl "https://your-domain.com/send/{key}?title=下载完成&desp=${TR_TORRENT_NAME}"
+```
+
+**案例 2：服务器 CPU 告警**
+```bash
+# 在监控脚本中添加
+CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}')
+if [ ${CPU_USAGE%.*} -gt 80 ]; then
+    curl "https://your-domain.com/send/{key}?title=CPU告警&desp=CPU使用率${CPU_USAGE}%"
+fi
+```
+
+**案例 3：GitHub Actions 部署通知**
+```yaml
+- name: 通知部署结果
+  run: |
+    curl "https://your-domain.com/send/${{ secrets.WEBHOOK_KEY }}?title=部署成功&desp=项目已上线"
+```
+- 📋 **模板消息** - 支持微信模板消息，突破 48 小时限制
+- 🎛️ **Web 控制台** - 可视化管理界面，配置更简单
+- 📊 **消息历史** - 完整的消息发送记录和状态追踪
+- 🏠 **数据自托管** - 数据存储在你自己的账户，完全可控
 - 🌍 **全球加速** - EdgeOne 边缘节点，全球低延迟
 - 🌓 **深色模式** - 支持 Light/Dark 主题切换
 
 ## 🎯 核心功能
+
+### 🎁 体验模式（NEW）
+- 无需登录即可体验
+- 自动配置测试环境
+- 快速了解所有功能
+- 仅供体验使用
 
 ### 渠道管理
 - 支持微信公众号（测试号/正式号）
@@ -82,14 +167,26 @@
 
 ## 🚀 快速开始
 
-### 一键部署
+### 🎁 方式一：在线体验（推荐新手）
 
-1. 点击上方 **Deploy to EdgeOne** 按钮
-2. 登录/注册 EdgeOne 账号，Fork 项目
-3. 绑定 KV 命名空间（见下方说明）
-4. 部署完成，访问应用初始化，保存 Admin Token
+**无需部署，立即体验：[https://webhook-pusher.ixnie.cn/](https://webhook-pusher.ixnie.cn/)**
 
-### 绑定 KV 命名空间
+- ✅ 无需登录，打开即用
+- ✅ 体验所有功能
+- ✅ 快速了解产品
+- ✅ 仅供体验使用
+
+体验满意后，再决定是否自己部署！
+
+---
+
+### ⚡ 方式二：一键部署（5分钟搞定）
+
+**第一步：点击部署按钮**
+
+点击页面顶部的 **Deploy to EdgeOne** 按钮，登录/注册 EdgeOne 账号
+
+**第二步：绑定 KV 命名空间**
 
 在 EdgeOne 控制台「Pages」→「进入项目」→「KV 存储」→「绑定命名空间」：
 
@@ -729,7 +826,9 @@ curl "https://your-domain.com/send/{appKey}?title=快递到达&desp=您的包裹
 
 ## 🤝 贡献指南
 
-欢迎提交 Issue 和 Pull Request！
+欢迎参与项目建设！我们需要你的帮助让这个项目变得更好。
+
+### 💻 代码贡献
 
 1. Fork 本仓库
 2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
@@ -737,13 +836,34 @@ curl "https://your-domain.com/send/{appKey}?title=快递到达&desp=您的包裹
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
 
+
+### 📝 内容贡献
+
+- **使用案例**：在 [GitHub Discussions](https://github.com/ixNieStudio/edgeone-webhook-pusher/discussions) 分享你的使用场景
+- **教程文档**：制作详细教程、避坑指南，被采纳后将在 README 置顶推荐
+- **问题反馈**：提交 Bug 报告、功能建议，帮助改进产品
+
+
+## 💬 社区交流
+
+- **GitHub Discussions**：[项目讨论区](https://github.com/ixNieStudio/edgeone-webhook-pusher/discussions)
+- **问题反馈**：[提交 Issue](https://github.com/ixNieStudio/edgeone-webhook-pusher/issues)
+- **功能建议**：欢迎在 Issues 中提出你的想法
+
+## 📊 项目标签
+
+`WeChat-push` `EdgeOne` `free` `self-hosted` `NAS` `HomeLab` `serverless` `webhook` `notification` `open-source`
+
 ## 📝 更新日志
 
 ### 2026-01-17
+- ✨ 新增体验模式，无需登录即可试用
 - ✨ 新增使用指引教程，帮助新用户快速上手
 - ✨ 增强模板消息配置，显示字段映射关系
 - ✨ 实现单播模式绑定限制
+- ✨ 添加完整的 Webhook 使用示例（cURL/POST/浏览器）
 - 🎨 优化绑定用户信息展示，添加绑定时间
+- 🎨 优化 README 文档，添加对比表和用户案例
 - 🐛 修复多个 UI 细节问题
 
 ### 2026-01-16
@@ -797,16 +917,22 @@ colin@ixNieStudio
 
 ---
 
-## 🔍 关键词
+## 🔍 SEO 关键词
 
-**核心功能**: 微信推送 | 消息推送 | Webhook | 模板消息 | 客服消息 | 单播订阅 | 免费部署 | 一键部署 | Serverless | EdgeOne
+**核心功能**: 微信推送 | 免费微信推送服务 | 自建微信推送 | EdgeOne 微信推送 | 消息推送 | Webhook | 模板消息 | 客服消息 | 单播订阅 | 免费部署 | 一键部署 | Serverless | 数据自托管 | Server酱替代品
 
-**HomeLab**: NAS 通知 | 群晖 | 威联通 | OpenWrt | 路由器监控 | 树莓派 | 智能家居 | Home Assistant | 米家 | HomeKit | 下载完成 | 备份通知 | 设备上线 | 网络监控
+**HomeLab**: NAS 通知 | 群晖 | 威联通 | OpenWrt | 路由器监控 | 树莓派 | 智能家居 | Home Assistant | 米家 | HomeKit | 下载完成 | 备份通知 | 设备上线 | 网络监控 | HomeLab 通知中心
 
-**开发运维**: GitHub Actions | CI/CD | Docker 监控 | 容器监控 | Jenkins | 部署通知 | 错误追踪 | Sentry | API 监控 | 日志分析 | Prometheus | Grafana | SSL 证书
+**开发运维**: GitHub Actions | CI/CD | Docker 监控 | 容器监控 | Jenkins | 部署通知 | 错误追踪 | Sentry | API 监控 | 日志分析 | Prometheus | Grafana | SSL 证书 | 服务器监控
 
-**自动化**: RSS 监控 | 爬虫通知 | 签到脚本 | 青龙面板 | 价格监控 | n8n | Zapier | IFTTT | 定时任务
+**自动化**: RSS 监控 | 爬虫通知 | 签到脚本 | 青龙面板 | 价格监控 | n8n | Zapier | IFTTT | 定时任务 | 自动化工作流
 
 **媒体服务**: Plex | Jellyfin | Emby | Transmission | qBittorrent | Rclone | Nextcloud
 
-**技术栈**: `#Nuxt` `#Vue3` `#TypeScript` `#EdgeOne` `#Serverless` `#Webhook` `#WeChat` `#HomeLab` `#NAS` `#OpenWrt` `#SmartHome` `#IoT` `#Docker` `#CI/CD` `#Automation`
+**技术栈**: `#Nuxt` `#Vue3` `#TypeScript` `#EdgeOne` `#Serverless` `#Webhook` `#WeChat` `#HomeLab` `#NAS` `#OpenWrt` `#SmartHome` `#IoT` `#Docker` `#CI/CD` `#Automation` `#SelfHosted` `#OpenSource`
+
+---
+
+⭐ **如果这个项目对你有帮助，请给个 Star 支持一下！**
+
+💬 **有问题或建议？欢迎在 [GitHub Discussions](https://github.com/ixNieStudio/edgeone-webhook-pusher/discussions) 交流！**
