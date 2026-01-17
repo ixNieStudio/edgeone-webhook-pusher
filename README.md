@@ -4,6 +4,8 @@
 
 [![Deploy to EdgeOne](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/pages/new?template=https://github.com/ixNieStudio/edgeone-webhook-pusher)
 
+**🎯 在线体验：[https://webhook-pusher.ixnie.cn/](https://webhook-pusher.ixnie.cn/)** - 无需登录，快速体验所有功能
+
 > 本项目由 [Tencent EdgeOne](https://edgeone.ai) 提供 CDN 加速和安全防护赞助
 > 
 > [![Tencent EdgeOne](https://edgeone.ai/media/34fe3a45-492d-4ea4-ae5d-ea1087ca7b4b.png)](https://edgeone.ai)
@@ -12,11 +14,11 @@
 
 <table>
   <tr>
-    <td><img src="docs/imgs/1.%20login.png" alt="登录页面" /></td>
+    <td><img src="docs/imgs/wechat.jpg" alt="微信推送效果" /></td>
     <td><img src="docs/imgs/2.%20home.png" alt="首页" /></td>
   </tr>
   <tr>
-    <td align="center">登录页面</td>
+    <td align="center">微信推送效果</td>
     <td align="center">首页概览</td>
   </tr>
   <tr>
@@ -29,18 +31,19 @@
   </tr>
   <tr>
     <td><img src="docs/imgs/5.%20messages.png" alt="消息历史" /></td>
-    <td><img src="docs/imgs/6.%20api-docs.png" alt="API 文档" /></td>
+    <td><img src="docs/imgs/1.%20login.png" alt="登录页面" /></td>
   </tr>
   <tr>
     <td align="center">消息历史</td>
-    <td align="center">API 文档</td>
+    <td align="center">登录页面</td>
   </tr>
 </table>
 
 ## ✨ 功能特性
 
-- 🆓 **完全免费** - 部署在 EdgeOne Pages 免费套餐，无需付费
+- 🆓 **完全免费** - 白嫖 EdgeOne Pages 免费额度，永久免费使用
 - ⚡ **一键部署** - 点击按钮即可部署，无需服务器、无需运维
+- 🎁 **体验模式** - 无需登录即可体验，快速了解所有功能
 - 📱 **微信推送** - 支持微信公众号模板消息和客服消息，消息直达微信
 - 🔗 **Webhook 风格** - 简单 URL 调用，一行代码搞定推送
 - 🔑 **多应用管理** - 为不同场景创建独立应用，互不干扰
@@ -48,11 +51,17 @@
 - 📋 **模板消息** - 支持微信模板消息，突破 48 小时限制
 - 🎛️ **Web 控制台** - 可视化管理界面，配置更简单
 - 📊 **消息历史** - 完整的消息发送记录和状态追踪
-- 🔒 **数据自主** - 数据存储在你自己的账户，完全可控
+- 🏠 **数据自托管** - 数据存储在你自己的账户，完全可控
 - 🌍 **全球加速** - EdgeOne 边缘节点，全球低延迟
 - 🌓 **深色模式** - 支持 Light/Dark 主题切换
 
 ## 🎯 核心功能
+
+### 🎁 体验模式（NEW）
+- 无需登录即可体验
+- 自动配置测试环境
+- 快速了解所有功能
+- 仅供体验使用
 
 ### 渠道管理
 - 支持微信公众号（测试号/正式号）
@@ -82,7 +91,20 @@
 
 ## 🚀 快速开始
 
-### 一键部署
+### 🎁 在线体验（推荐）
+
+**无需部署，立即体验：[https://webhook-pusher.ixnie.cn/](https://webhook-pusher.ixnie.cn/)**
+
+- ✅ 无需登录，打开即用
+- ✅ 体验所有功能
+- ✅ 快速了解产品
+- ✅ 仅供体验使用
+
+体验满意后，再决定是否自己部署！
+
+---
+
+### 一键部署（自托管）
 
 1. 点击上方 **Deploy to EdgeOne** 按钮
 2. 登录/注册 EdgeOne 账号，Fork 项目
