@@ -83,6 +83,24 @@ interface KVResponse<T = unknown> {
   error?: string;
 }
 
+async function parseKVResponse<T>(res: Response): Promise<KVResponse<T>> {
+  try {
+    return await res.json() as KVResponse<T>;
+  } catch (error) {
+    const text = await res.text().catch(() => '');
+    const statusInfo = `${res.status} ${res.statusText}`.trim();
+    throw new Error(`KV 响应解析失败（${statusInfo}）：${text || String(error)}`);
+  }
+}
+
+function buildKVErrorMessage(res: Response, data?: KVResponse): string {
+  const statusInfo = `${res.status} ${res.statusText}`.trim();
+  if (data?.error) {
+    return `KV 请求失败（${statusInfo}）：${data.error}`;
+  }
+  return `KV 请求失败（${statusInfo}）`;
+}
+
 /**
  * Create a typed KV client for a specific namespace
  */
@@ -93,9 +111,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       const res = await fetch(`${baseUrl}?action=get&key=${encodeURIComponent(key)}`, {
         headers: getAuthHeaders(),
       });
-      const data = await res.json() as KVResponse<R>;
-      if (!data.success) {
-        throw new Error(data.error || 'KV get failed');
+      const data = await parseKVResponse<R>(res);
+      if (!res.ok || !data.success) {
+        throw new Error(buildKVErrorMessage(res, data));
       }
       return data.data ?? null;
     },
@@ -110,9 +128,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
         },
         body: JSON.stringify({ key, value, ttl }),
       });
-      const data = await res.json() as KVResponse;
-      if (!data.success) {
-        throw new Error(data.error || 'KV put failed');
+      const data = await parseKVResponse(res);
+      if (!res.ok || !data.success) {
+        throw new Error(buildKVErrorMessage(res, data));
       }
     },
 
@@ -121,9 +139,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       const res = await fetch(`${baseUrl}?action=delete&key=${encodeURIComponent(key)}`, {
         headers: getAuthHeaders(),
       });
-      const data = await res.json() as KVResponse;
-      if (!data.success) {
-        throw new Error(data.error || 'KV delete failed');
+      const data = await parseKVResponse(res);
+      if (!res.ok || !data.success) {
+        throw new Error(buildKVErrorMessage(res, data));
       }
     },
 
@@ -140,9 +158,9 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: getAuthHeaders(),
       });
-      const data = await res.json() as KVResponse;
-      if (!data.success) {
-        throw new Error(data.error || 'KV list failed');
+      const data = await parseKVResponse(res);
+      if (!res.ok || !data.success) {
+        throw new Error(buildKVErrorMessage(res, data));
       }
       return {
         keys: data.keys || [],
