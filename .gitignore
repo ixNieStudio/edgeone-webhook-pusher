@@ -84,5 +84,4 @@ pnpm-lock.yaml
 .tef_dist/*
 
 # Internal API Key (generated at build time)
-shared/internal-key.json
   
