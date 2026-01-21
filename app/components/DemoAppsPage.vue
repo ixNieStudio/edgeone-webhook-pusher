@@ -2,24 +2,25 @@
   <div class="h-full flex flex-col">
     <!-- Demo Banner -->
     <DemoBanner />
+
+    <!-- Project Introduction -->
+    <div id="introduction">
+      <ProjectIntroduction />
+    </div>
+
+    <!-- Navigation Menu -->
+    <NavigationMenu :sections="navigationSections" />
     
     <!-- Main Content -->
     <div class="flex-1 overflow-auto">
-      <div class="max-w-4xl mx-auto p-6">
-        <div class="mb-6">
-          <h1 class="text-2xl font-bold mb-2">体验应用管理</h1>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            快速体验微信公众号推送功能，无需登录即可创建应用并测试推送
-          </p>
-        </div>
-
+      <div class="px-4 md:px-6 lg:px-8 py-6">
         <!-- Loading State -->
         <div v-if="loading" class="flex justify-center py-12">
           <Icon icon="heroicons:arrow-path" class="text-3xl animate-spin text-gray-400" />
         </div>
 
-        <!-- Quick Start Guide - Always Show -->
-        <div v-if="!loading" class="mb-6">
+        <!-- Quick Start Guide -->
+        <div v-if="!loading" id="guide" class="mb-8">
           <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
               <div class="flex items-center gap-2">
@@ -74,11 +75,7 @@
                   <div class="flex-1">
                     <div class="font-medium text-sm">发送测试消息</div>
                     <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      复制应用的 Webhook URL，在浏览器中访问或使用 curl 命令发送测试消息。
-                    </div>
-                    <div class="mt-2">
-                      <div class="text-xs text-gray-600 dark:text-gray-400 mb-1">示例：</div>
-                      <pre class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1.5 rounded overflow-x-auto">curl "https://your-domain.com/send/APP_KEY?title=测试&desp=内容"</pre>
+                      绑定成功后，复制应用的 Webhook URL，在浏览器中访问或使用 curl 命令发送测试消息。
                     </div>
                   </div>
                 </div>
@@ -98,211 +95,45 @@
           </div>
         </div>
 
-        <!-- App List -->
-        <div v-if="!loading && apps.length > 0" class="space-y-4">
-          <div
-            v-for="app in apps"
-            :key="app.id"
-            class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6"
-          >
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <h3 class="text-lg font-semibold mb-1">{{ app.name }}</h3>
-                <div class="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                  <span>绑定用户: {{ app.openIdCount || 0 }}</span>
-                  <span v-if="app.daysRemaining !== undefined" class="flex items-center gap-1">
-                    <Icon icon="heroicons:clock" class="text-base" />
-                    剩余 {{ app.daysRemaining }} 天
-                  </span>
-                </div>
-                <div class="flex items-center gap-3 mt-2 text-xs">
-                  <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
-                    <Icon icon="heroicons:paper-airplane" class="text-sm" />
-                    {{ app.pushMode === 'single' ? '单播模式' : '订阅模式' }}
-                  </span>
-                  <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400">
-                    <Icon icon="heroicons:document-text" class="text-sm" />
-                    {{ app.messageType === 'template' ? '模板消息' : '文本消息' }}
-                  </span>
-                </div>
-              </div>
-              <button
-                class="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                @click="handleDelete(app.id)"
-                title="删除应用"
-              >
-                <Icon icon="heroicons:trash" class="text-xl" />
-              </button>
-            </div>
+        <!-- App List Section -->
+        <div id="apps">
+          <div v-if="!loading && apps.length > 0" class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <DemoAppCard
+              v-for="app in apps"
+              :key="app.id"
+              :app="app"
+              :bind-code="bindCodes[app.id]"
+              :generating-code="generatingCode[app.id]"
+              @delete="handleDelete"
+              @generate-code="handleGenerateCode"
+              @copy="copyToClipboard"
+            />
 
-            <!-- Webhook URL -->
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Webhook URL
-              </label>
-              <div class="flex gap-2">
-                <input
-                  :value="getWebhookUrl(app.key)"
-                  readonly
-                  class="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                />
-                <button
-                  class="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  @click="copyToClipboard(getWebhookUrl(app.key))"
-                >
-                  复制
-                </button>
-              </div>
-            </div>
-
-            <!-- Webhook Usage Examples -->
-            <div class="border-t border-gray-200 dark:border-gray-800 pt-4">
-              <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">使用示例</h4>
-              
-              <!-- Tabs -->
-              <div class="border-b border-gray-200 dark:border-gray-700 mb-3">
-                <nav class="flex gap-4" aria-label="Tabs">
-                  <button
-                    v-for="(tab, index) in usageTabs"
-                    :key="index"
-                    class="py-2 px-1 text-xs font-medium border-b-2 transition-colors"
-                    :class="activeUsageTab[app.id] === index ? 'border-primary-600 text-primary-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
-                    @click="activeUsageTab[app.id] = index"
-                  >
-                    {{ tab.label }}
-                  </button>
-                </nav>
-              </div>
-
-              <!-- Tab Content -->
-              <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-                <!-- cURL GET -->
-                <div v-if="(activeUsageTab[app.id] || 0) === 0">
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-gray-600 dark:text-gray-400">GET 请求（推荐）</span>
-                    <button
-                      class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                      @click="copyToClipboard(getWebhookExample(app.key, 'curl'))"
-                    >
-                      复制
-                    </button>
-                  </div>
-                  <pre class="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto"><code>{{ getWebhookExample(app.key, 'curl') }}</code></pre>
-                </div>
-
-                <!-- POST JSON -->
-                <div v-else-if="(activeUsageTab[app.id] || 0) === 1">
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-gray-600 dark:text-gray-400">POST 请求（JSON）</span>
-                    <button
-                      class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                      @click="copyToClipboard(getWebhookExample(app.key, 'post'))"
-                    >
-                      复制
-                    </button>
-                  </div>
-                  <pre class="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto"><code>{{ getWebhookExample(app.key, 'post') }}</code></pre>
-                </div>
-
-                <!-- Browser -->
-                <div v-else>
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-gray-600 dark:text-gray-400">浏览器访问</span>
-                    <button
-                      class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                      @click="copyToClipboard(getWebhookExample(app.key, 'browser'))"
-                    >
-                      复制
-                    </button>
-                  </div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">直接在浏览器地址栏访问：</p>
-                  <pre class="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-x-auto"><code>{{ getWebhookExample(app.key, 'browser') }}</code></pre>
-                </div>
-              </div>
-
-              <!-- Parameters Guide -->
-              <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div class="text-xs text-blue-700 dark:text-blue-400">
-                  <div class="font-medium mb-1">参数说明</div>
-                  <ul class="space-y-0.5">
-                    <li>• <code class="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">title</code> - 消息标题（必填）</li>
-                    <li>• <code class="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">desp</code> - 消息内容（可选）</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <!-- Bind Code Section -->
-            <div class="border-t border-gray-200 dark:border-gray-800 pt-4">
-              <div class="flex items-center justify-between mb-3">
-                <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">用户绑定</h4>
-                <button
-                  :disabled="generatingCode[app.id]"
-                  class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
-                  @click="handleGenerateCode(app.id)"
-                >
-                  <Icon v-if="generatingCode[app.id]" icon="heroicons:arrow-path" class="text-base animate-spin" />
-                  生成绑定码
-                </button>
-              </div>
-              
-              <div v-if="bindCodes[app.id]" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                <!-- 二维码（如果可用） -->
-                <div v-if="bindCodes[app.id]?.qrCodeUrl" class="text-center mb-4">
-                  <div class="inline-block p-3 bg-white rounded-lg shadow-sm">
-                    <img 
-                      :src="bindCodes[app.id]!.qrCodeUrl" 
-                      alt="绑定二维码"
-                      class="w-48 h-48 mx-auto"
-                    />
-                  </div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    使用微信扫描二维码完成绑定
-                  </p>
-                </div>
-
-                <!-- 绑定码 -->
-                <div class="text-center" :class="{ 'mb-3': !bindCodes[app.id]?.qrCodeUrl }">
-                  <div class="text-3xl font-mono font-bold text-primary-600 dark:text-primary-400 tracking-wider">
-                    {{ bindCodes[app.id]?.code }}
-                  </div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {{ bindCodes[app.id]?.expiresIn }}
-                  </p>
-                </div>
-
-                <!-- 手动绑定说明 -->
-                <p class="text-xs text-gray-600 dark:text-gray-400 text-center" :class="{ 'mt-3': bindCodes[app.id]?.qrCodeUrl }">
-                  <span v-if="bindCodes[app.id]?.qrCodeUrl">或</span>在微信公众号中发送 "绑定 {{ bindCodes[app.id]?.code }}" 完成绑定
-                </p>
-              </div>
-            </div>
+            <!-- Create New Button -->
+            <button
+              class="w-full py-8 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+              @click="showCreateModal = true"
+            >
+              <Icon icon="heroicons:plus" class="text-2xl inline-block mb-2" />
+              <div class="text-sm font-medium">创建新应用</div>
+            </button>
           </div>
 
-          <!-- Create New Button -->
-          <button
-            class="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:border-primary-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-            @click="showCreateModal = true"
-          >
-            <Icon icon="heroicons:plus" class="text-xl inline-block mr-2" />
-            创建新应用
-          </button>
-        </div>
-
-        <!-- Empty State - No Apps -->
-        <div v-if="!loading && apps.length === 0" class="text-center py-8">
-          <Icon icon="heroicons:cube-transparent" class="text-6xl text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-          <h3 class="text-lg font-semibold mb-2">开始体验</h3>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
-            创建您的第一个体验应用，快速测试微信公众号推送功能
-          </p>
-          <button
-            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
-            @click="showCreateModal = true"
-          >
-            <Icon icon="heroicons:plus" class="text-base" />
-            创建第一个应用
-          </button>
+          <!-- Empty State - No Apps -->
+          <div v-if="!loading && apps.length === 0" class="text-center py-12">
+            <Icon icon="heroicons:cube-transparent" class="text-6xl text-gray-300 dark:text-gray-700 mx-auto mb-4" />
+            <h3 class="text-lg font-semibold mb-2">开始体验</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              创建您的第一个体验应用，快速测试微信公众号推送功能
+            </p>
+            <button
+              class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+              @click="showCreateModal = true"
+            >
+              <Icon icon="heroicons:plus" class="text-base" />
+              创建第一个应用
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -431,6 +262,13 @@ import type { DemoAppWithInfo, DemoAppCreateInput } from '~/composables/useDemoA
 const demoApps = useDemoApps();
 const toast = useToast();
 
+// Navigation sections
+const navigationSections = [
+  { id: 'introduction', label: '项目介绍', icon: 'heroicons:information-circle' },
+  { id: 'apps', label: '我的应用', icon: 'heroicons:cube' },
+  { id: 'guide', label: '使用指南', icon: 'heroicons:book-open' },
+];
+
 // State
 const loading = ref(true);
 const apps = ref<DemoAppWithInfo[]>([]);
@@ -439,19 +277,12 @@ const creating = ref(false);
 const generatingCode = ref<Record<string, boolean>>({});
 const bindCodes = ref<Record<string, { code: string; expiresIn: string; qrCodeUrl?: string }>>({});
 const pollingIntervals = ref<Record<string, NodeJS.Timeout>>({});
-const activeUsageTab = ref<Record<string, number>>({});
 
 const createForm = ref<DemoAppCreateInput>({
   name: '',
   pushMode: 'single',
   messageType: 'template',
 });
-
-const usageTabs = [
-  { label: 'cURL' },
-  { label: 'POST' },
-  { label: '浏览器' },
-];
 
 onMounted(() => {
   fetchApps();
@@ -600,28 +431,6 @@ function stopAllPolling() {
 onUnmounted(() => {
   stopAllPolling();
 });
-
-function getWebhookUrl(appKey: string): string {
-  const origin = window.location.origin;
-  return `${origin}/send/${appKey}`;
-}
-
-function getWebhookExample(appKey: string, type: 'curl' | 'post' | 'browser'): string {
-  const url = getWebhookUrl(appKey);
-  
-  switch (type) {
-    case 'curl':
-      return `curl "${url}?title=测试消息&desp=这是消息内容"`;
-    case 'post':
-      return `curl -X POST "${url}" \\
-  -H "Content-Type: application/json" \\
-  -d '{"title":"测试消息","desp":"这是消息内容"}'`;
-    case 'browser':
-      return `${url}?title=测试消息&desp=这是消息内容`;
-    default:
-      return url;
-  }
-}
 
 function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text).then(() => {
