@@ -25,6 +25,19 @@ export function extractBaseUrl(ctx: Context): string {
     return envUrl.trim();
   }
 
+  // 打印所有可能包含域名的请求头
+  console.log('\x1b[33m[KV Extract]\x1b[0m All relevant headers:', {
+    'x-forwarded-proto': ctx.get('x-forwarded-proto'),
+    'x-forwarded-host': ctx.get('x-forwarded-host'),
+    'x-forwarded-for': ctx.get('x-forwarded-for'),
+    'x-real-ip': ctx.get('x-real-ip'),
+    'host': ctx.get('host'),
+    'origin': ctx.get('origin'),
+    'referer': ctx.get('referer'),
+    'x-original-host': ctx.get('x-original-host'),
+    'x-forwarded-server': ctx.get('x-forwarded-server'),
+  });
+
   // 尝试使用 Koa 的 ctx.origin（包含 protocol 和 host）
   // ctx.origin 会自动处理代理头（当 app.proxy = true 时）
   let origin = ctx.origin;
@@ -35,38 +48,28 @@ export function extractBaseUrl(ctx: Context): string {
     
     // 手动从请求头构建 origin
     const protocol = ctx.get('x-forwarded-proto') || ctx.protocol || 'https';
-    const host = ctx.get('x-forwarded-host') || ctx.get('host') || ctx.host;
+    
+    // 尝试多个可能包含真实域名的头
+    const host = 
+      ctx.get('x-original-host') ||      // 可能的自定义头
+      ctx.get('x-forwarded-host') ||     // 标准代理头
+      ctx.get('host') ||                 // 标准 Host 头
+      ctx.host;                          // Koa 的 host
     
     if (host) {
       origin = `${protocol}://${host}`;
       console.log('\x1b[33m[KV Extract]\x1b[0m Manually built origin:', origin);
+      console.log('\x1b[33m[KV Extract]\x1b[0m Using host from:', 
+        ctx.get('x-original-host') ? 'x-original-host' :
+        ctx.get('x-forwarded-host') ? 'x-forwarded-host' :
+        ctx.get('host') ? 'host header' : 'ctx.host'
+      );
     } else {
       console.error('\x1b[31m[KV Extract]\x1b[0m Cannot determine host!');
-      console.error('\x1b[31m[KV Extract]\x1b[0m Headers:', {
-        'x-forwarded-proto': ctx.get('x-forwarded-proto'),
-        'x-forwarded-host': ctx.get('x-forwarded-host'),
-        'host': ctx.get('host'),
-        'ctx.host': ctx.host,
-        'ctx.hostname': ctx.hostname,
-      });
-      // 返回空字符串会导致相对路径，这会失败
-      // 但至少我们能看到错误日志
       return '';
     }
   } else {
     console.log('\x1b[35m[KV Extract]\x1b[0m Using ctx.origin:', origin);
-  }
-  
-  // 详细调试日志
-  if (process.env.DEBUG_KV_URL === 'true') {
-    console.log('\x1b[35m[KV Extract]\x1b[0m ctx.protocol:', ctx.protocol);
-    console.log('\x1b[35m[KV Extract]\x1b[0m ctx.host:', ctx.host);
-    console.log('\x1b[35m[KV Extract]\x1b[0m ctx.hostname:', ctx.hostname);
-    console.log('\x1b[35m[KV Extract]\x1b[0m Headers:', {
-      'x-forwarded-proto': ctx.get('x-forwarded-proto'),
-      'x-forwarded-host': ctx.get('x-forwarded-host'),
-      'host': ctx.get('host'),
-    });
   }
   
   return origin;
