@@ -124,6 +124,14 @@ function debugLog(message: string, ...args: any[]): void {
 }
 
 /**
+ * 错误日志（总是打印）
+ */
+function errorLog(message: string, details: any): void {
+  console.error('\x1b[31m[KV Client Error]\x1b[0m', message);
+  console.error('\x1b[31m[KV Client Error]\x1b[0m Details:', JSON.stringify(details, null, 2));
+}
+
+/**
  * Create a typed KV client for a specific namespace
  */
 function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
@@ -134,17 +142,44 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       
       debugLog(`GET ${namespace}/${key}`, { baseUrl, url });
       
-      const res = await fetch(url, {
-        headers: getAuthHeaders(),
-      });
-      const data = await res.json() as KVResponse<R>;
-      
-      debugLog(`GET ${namespace}/${key} response:`, data);
-      
-      if (!data.success) {
-        throw new Error(data.error || 'KV get failed');
+      try {
+        const res = await fetch(url, {
+          headers: getAuthHeaders(),
+        });
+        
+        const data = await res.json() as KVResponse<R>;
+        
+        debugLog(`GET ${namespace}/${key} response:`, data);
+        
+        if (!data.success) {
+          // 错误时打印详细信息
+          errorLog(`KV GET failed for ${namespace}/${key}`, {
+            baseUrl,
+            url,
+            key,
+            namespace,
+            error: data.error,
+            envKvBaseUrl: process.env.KV_BASE_URL || '(not set)',
+            asyncStorageUrl: asyncLocalStorage.getStore() || '(not set)',
+          });
+          throw new Error(data.error || 'KV get failed');
+        }
+        return data.data ?? null;
+      } catch (error) {
+        // 捕获 fetch 错误
+        if (error instanceof Error && !error.message.includes('KV get failed')) {
+          errorLog(`KV GET fetch error for ${namespace}/${key}`, {
+            baseUrl,
+            url,
+            key,
+            namespace,
+            error: error.message,
+            envKvBaseUrl: process.env.KV_BASE_URL || '(not set)',
+            asyncStorageUrl: asyncLocalStorage.getStore() || '(not set)',
+          });
+        }
+        throw error;
       }
-      return data.data ?? null;
     },
 
     async put<R = T>(key: string, value: R, ttl?: number): Promise<void> {

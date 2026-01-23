@@ -13,6 +13,7 @@ import { appService } from '../services/app.service.js';
 import { bindCodeService } from '../services/bindcode.service.js';
 import { channelService } from '../services/channel.service.js';
 import { cleanupService } from '../services/cleanup.service.js';
+import { extractBaseUrl } from '../middleware/kv-base-url.js';
 import { ApiError } from '../types/index.js';
 import type { PushMode, MessageType } from '../types/app.js';
 
@@ -52,8 +53,9 @@ function calculateDaysRemaining(createdAt?: string): number {
  * @returns {App[]} 体验应用列表
  */
 router.get('/', async (ctx: AppContext) => {
-  // 触发清理任务
-  cleanupService.triggerCleanup().catch(console.error);
+  // 触发清理任务（传递 baseUrl）
+  const baseUrl = extractBaseUrl(ctx);
+  cleanupService.triggerCleanup(baseUrl).catch(console.error);
 
   const apps = await demoAppService.list();
 
@@ -83,8 +85,9 @@ router.get('/', async (ctx: AppContext) => {
  * @returns {App} 创建的体验应用信息
  */
 router.post('/', async (ctx: AppContext) => {
-  // 触发清理任务
-  cleanupService.triggerCleanup().catch(console.error);
+  // 触发清理任务（传递 baseUrl）
+  const baseUrl = extractBaseUrl(ctx);
+  cleanupService.triggerCleanup(baseUrl).catch(console.error);
 
   const body = ctx.request.body as { name: string; pushMode: PushMode; messageType?: MessageType } | undefined;
 

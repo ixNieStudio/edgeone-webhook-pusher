@@ -20,6 +20,9 @@ import type { PushMessageInput } from '../types/index.js';
 
 const app = new Koa();
 
+// 信任代理（EdgeOne 环境必需）
+app.proxy = true;
+
 // CORS 中间件
 app.use(async (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*');

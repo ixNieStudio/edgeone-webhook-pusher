@@ -32,6 +32,9 @@ import {
 
 const app = new Koa();
 
+// 信任代理（EdgeOne 环境必需）
+app.proxy = true;
+
 // 错误处理中间件（最外层）
 app.use(errorHandler);
 
