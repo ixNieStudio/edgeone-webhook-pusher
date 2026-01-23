@@ -23,6 +23,9 @@ const app = new Koa();
 // 信任代理（EdgeOne 环境必需）
 app.proxy = true;
 
+// 验证 app.proxy 设置
+console.log('\x1b[36m[Send Init]\x1b[0m app.proxy is set to:', app.proxy);
+
 // CORS 中间件
 app.use(async (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*');
