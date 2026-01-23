@@ -40,7 +40,31 @@ edgeone pages dev
 
 所有服务运行在 `http://localhost:8088`
 
-### 3. KV 存储
+### 3. 配置环境变量（可选）
+
+复制 `.env.example` 为 `.env.local`：
+
+```bash
+cp .env.example .env.local
+```
+
+#### KV_BASE_URL 配置说明
+
+- **本地开发**：如果需要连接远程 KV，设置为远程地址
+  ```bash
+  KV_BASE_URL=https://your-project.edgeone.app
+  ```
+
+- **生产环境**：留空或不设置，系统会自动从请求头中提取当前域名
+  ```bash
+  # KV_BASE_URL=
+  ```
+
+系统会按以下优先级确定 KV API 地址：
+1. 环境变量 `KV_BASE_URL`（如果设置）
+2. 自动检测当前请求的域名（推荐生产环境使用）
+
+### 4. KV 存储
 
 #### 本地模拟 KV
 `edgeone pages dev` 会自动模拟 KV 存储，数据保存在本地，无需额外配置。

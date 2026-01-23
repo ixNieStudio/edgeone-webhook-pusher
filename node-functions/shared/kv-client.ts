@@ -29,10 +29,18 @@ export function setKVBaseUrl(url: string): void {
 
 /**
  * Get the base URL for KV API
- * 优先使用环境变量 KV_BASE_URL，其次使用动态设置的 baseUrl
+ * 优先级：环境变量 KV_BASE_URL > 动态设置的 baseUrl > 空字符串（同源请求）
  */
 function getBaseUrl(): string {
-  return process.env.KV_BASE_URL || dynamicBaseUrl || '';
+  const envUrl = process.env.KV_BASE_URL;
+  
+  // 如果环境变量存在且不为空，使用环境变量
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim();
+  }
+  
+  // 否则使用动态设置的 baseUrl（从请求上下文中获取）
+  return dynamicBaseUrl || '';
 }
 
 /**

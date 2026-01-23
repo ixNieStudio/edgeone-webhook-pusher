@@ -14,7 +14,7 @@ import Koa from 'koa';
 // @ts-ignore - koa-bodyparser types are not fully compatible
 import bodyParser from 'koa-bodyparser';
 import { pushService } from '../services/push.service.js';
-import { setKVBaseUrl } from '../shared/kv-client.js';
+import { kvBaseUrlMiddleware } from '../middleware/index.js';
 import { ErrorCodes } from '../types/index.js';
 import type { PushMessageInput } from '../types/index.js';
 
@@ -37,21 +37,8 @@ app.use(async (ctx, next) => {
 // Body parser
 app.use(bodyParser());
 
-// 设置 KV baseUrl
-// 优先使用环境变量 KV_BASE_URL，生产环境留空使用同源
-app.use(async (ctx, next) => {
-  const kvBaseUrl = process.env.KV_BASE_URL;
-  
-  if (kvBaseUrl) {
-    setKVBaseUrl(kvBaseUrl);
-  } else {
-    const protocol = ctx.get('x-forwarded-proto') || ctx.protocol || 'http';
-    const host = ctx.get('host') || 'localhost:8088';
-    setKVBaseUrl(`${protocol}://${host}`);
-  }
-  
-  await next();
-});
+// KV Base URL 中间件
+app.use(kvBaseUrlMiddleware);
 
 // 主处理逻辑
 app.use(async (ctx) => {

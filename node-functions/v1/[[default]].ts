@@ -11,7 +11,7 @@ import Router from '@koa/router';
 import bodyParser from 'koa-bodyparser';
 
 // 中间件
-import { errorHandler, responseWrapper, cors, xmlBody } from '../middleware/index.js';
+import { errorHandler, responseWrapper, cors, xmlBody, kvBaseUrlMiddleware } from '../middleware/index.js';
 
 // 路由
 import {
@@ -28,30 +28,12 @@ import {
   demoAppsRouter,
 } from '../routes/index.js';
 
-// KV 客户端
-import { setKVBaseUrl } from '../shared/kv-client.js';
-
 // ============ 创建 Koa 应用 ============
 
 const app = new Koa();
 
-// 设置 KV baseUrl 的中间件
-// 优先使用环境变量 KV_BASE_URL（本地开发时指向远程 Edge Functions）
-// 生产环境留空则使用同源请求
-app.use(async (ctx, next) => {
-  const kvBaseUrl = process.env.KV_BASE_URL;
-  
-  if (kvBaseUrl) {
-    setKVBaseUrl(kvBaseUrl);
-  } else {
-    // 生产环境：使用同源请求
-    const protocol = ctx.get('x-forwarded-proto') || ctx.protocol || 'http';
-    const host = ctx.get('host') || 'localhost:8088';
-    setKVBaseUrl(`${protocol}://${host}`);
-  }
-  
-  await next();
-});
+// KV Base URL 中间件（必须在所有业务逻辑之前）
+app.use(kvBaseUrlMiddleware);
 
 // 错误处理中间件（最外层）
 app.use(errorHandler);
