@@ -3,7 +3,7 @@
  */
 
 import { configKV } from '../shared/kv-client.js';
-import { now, generateAdminToken } from '../shared/utils.js';
+import { now, generateAdminToken, validatePasswordFormat } from '../shared/utils.js';
 import type { SystemConfig } from '../types/index.js';
 import { KVKeys, DefaultConfig } from '../types/index.js';
 
@@ -110,20 +110,48 @@ class ConfigService {
   }
 
   /**
-   * 重置管理员令牌
+   * 重置管理员令牌（支持自定义密码）
    * 生成新的 adminToken 并更新配置，保持其他配置字段不变
+   * @param newPassword - 可选的自定义密码
+   * @param confirmPassword - 可选的确认密码
    * @returns 包含新 adminToken 的配置对象
-   * @throws 如果配置未初始化或更新失败
+   * @throws 如果配置未初始化、密码验证失败或更新失败
    */
-  async resetAdminToken(): Promise<SystemConfig> {
+  async resetAdminToken(
+    newPassword?: string,
+    confirmPassword?: string
+  ): Promise<SystemConfig> {
     // 获取当前配置
     const config = await this.getConfig();
     if (!config) {
       throw new Error('Configuration not initialized');
     }
 
-    // 生成新的 adminToken
-    const newAdminToken = generateAdminToken();
+    let newAdminToken: string;
+    
+    // 如果提供了自定义密码
+    if (newPassword !== undefined && newPassword !== null && newPassword !== '') {
+      // 验证必须提供确认密码
+      if (!confirmPassword) {
+        throw new Error('CONFIRMATION_REQUIRED');
+      }
+      
+      // 验证两次密码是否一致
+      if (newPassword !== confirmPassword) {
+        throw new Error('PASSWORD_MISMATCH');
+      }
+      
+      // 验证密码格式
+      if (!validatePasswordFormat(newPassword)) {
+        throw new Error('PASSWORD_INVALID');
+      }
+      
+      // 使用自定义密码（不添加前缀）
+      newAdminToken = newPassword;
+    } else {
+      // 自动生成随机令牌
+      newAdminToken = generateAdminToken();
+    }
 
     // 创建更新后的配置，保持其他字段不变
     const updatedConfig: SystemConfig = {

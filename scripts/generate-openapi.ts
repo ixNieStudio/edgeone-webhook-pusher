@@ -37,6 +37,8 @@ const CONFIG = {
     'CreateOpenIDInput',
     'UpdateOpenIDInput',
     'PushMessageInput',
+    'ResetTokenRequest',
+    'ResetTokenResult',
   ],
 };
 
@@ -355,6 +357,41 @@ function addFallbackSchemas(schemas: Record<string, JSONSchema>): void {
         success: { type: 'boolean' },
         msgId: { type: 'string' },
         error: { type: 'string' },
+      },
+    },
+    ResetTokenRequest: {
+      type: 'object',
+      properties: {
+        newPassword: {
+          type: 'string',
+          description: '自定义密码（可选）。需符合复杂度要求：至少12个字符，包含大小写字母、数字和特殊字符',
+          example: 'MySecurePass123!',
+        },
+        confirmPassword: {
+          type: 'string',
+          description: '确认密码（使用自定义密码时必填）',
+          example: 'MySecurePass123!',
+        },
+      },
+    },
+    ResetTokenResult: {
+      type: 'object',
+      properties: {
+        adminToken: {
+          type: 'string',
+          description: '新的管理员令牌',
+          example: 'AT_MySecurePass123!',
+        },
+        message: {
+          type: 'string',
+          description: '提示信息',
+          example: '管理员密码已重置为自定义密码。请妥善保管新密码，旧令牌已失效。',
+        },
+        isCustomPassword: {
+          type: 'boolean',
+          description: '是否使用自定义密码',
+          example: true,
+        },
       },
     },
   };

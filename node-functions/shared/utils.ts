@@ -155,3 +155,37 @@ export function sanitizeInput(input: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
 }
+
+/**
+ * 验证密码格式（后端简化版）
+ * 使用正则表达式进行基本格式验证
+ * @param password - 待验证的密码
+ * @returns 验证是否通过
+ */
+export function validatePasswordFormat(password: string): boolean {
+  if (!password || password.length < 12) {
+    return false;
+  }
+  
+  // 检查是否包含大写字母
+  if (!/[A-Z]/.test(password)) {
+    return false;
+  }
+  
+  // 检查是否包含小写字母
+  if (!/[a-z]/.test(password)) {
+    return false;
+  }
+  
+  // 检查是否包含数字
+  if (!/[0-9]/.test(password)) {
+    return false;
+  }
+  
+  // 检查是否包含特殊字符
+  if (!/[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)) {
+    return false;
+  }
+  
+  return true;
+}

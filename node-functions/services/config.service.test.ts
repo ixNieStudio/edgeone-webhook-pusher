@@ -49,8 +49,8 @@ describe('ConfigService - resetAdminToken Property Tests', () => {
           retention: fc.record({
             days: fc.integer({ min: 1, max: 365 }),
           }),
-          createdAt: fc.date().map(d => d.toISOString()),
-          updatedAt: fc.date().map(d => d.toISOString()),
+          createdAt: fc.integer({ min: 1577836800000, max: 1924905600000 }).map(ts => new Date(ts).toISOString()),
+          updatedAt: fc.integer({ min: 1577836800000, max: 1924905600000 }).map(ts => new Date(ts).toISOString()),
         }),
         async (originalConfig: SystemConfig) => {
           // Setup: Mock KV to return original config
@@ -87,8 +87,8 @@ describe('ConfigService - resetAdminToken Property Tests', () => {
           retention: fc.record({
             days: fc.integer({ min: 1, max: 365 }),
           }),
-          createdAt: fc.date().map(d => d.toISOString()),
-          updatedAt: fc.date().map(d => d.toISOString()),
+          createdAt: fc.integer({ min: 1577836800000, max: 1924905600000 }).map(ts => new Date(ts).toISOString()),
+          updatedAt: fc.integer({ min: 1577836800000, max: 1924905600000 }).map(ts => new Date(ts).toISOString()),
         }),
         async (originalConfig: SystemConfig) => {
           // Setup
@@ -164,8 +164,8 @@ describe('ConfigService - resetAdminToken Property Tests', () => {
           retention: fc.record({
             days: fc.integer({ min: 1, max: 365 }),
           }),
-          createdAt: fc.date().map(d => d.toISOString()),
-          updatedAt: fc.date().map(d => d.toISOString()),
+          createdAt: fc.integer({ min: 1577836800000, max: 1924905600000 }).map(ts => new Date(ts).toISOString()),
+          updatedAt: fc.integer({ min: 1577836800000, max: 1924905600000 }).map(ts => new Date(ts).toISOString()),
         }),
         async (originalConfig: SystemConfig) => {
           // Setup: Mock KV.put to fail
@@ -191,5 +191,273 @@ describe('ConfigService - resetAdminToken Property Tests', () => {
     vi.mocked(configKV.get).mockResolvedValue(null);
 
     await expect(configService.resetAdminToken()).rejects.toThrow('Configuration not initialized');
+  });
+});
+
+describe('ConfigService - resetAdminToken Property Tests (Custom Password)', () => {
+  const mockConfig: SystemConfig = {
+    adminToken: 'AT_old_token_12345',
+    rateLimit: { perMinute: 10 },
+    retention: { days: 30 },
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(configKV.get).mockResolvedValue(mockConfig);
+    vi.mocked(configKV.put).mockResolvedValue(undefined);
+  });
+
+  /**
+   * Property 2: 密码确认一致性（验证需求 3）
+   * **Validates: Requirements 3**
+   * 
+   * 当提供确认密码时，只有当两次密码完全一致时才能通过验证。
+   * 对于任意两个字符串 password1 和 password2：
+   * - 如果 password1 === password2 且密码有效，则重置应该成功
+   * - 如果 password1 !== password2，则重置应该失败并抛出 PASSWORD_MISMATCH 错误
+   */
+  it('Property 2: Password confirmation consistency - only succeeds when passwords match', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        // Generate two arbitrary strings
+        fc.string({ minLength: 12, maxLength: 30 }),
+        fc.string({ minLength: 12, maxLength: 30 }),
+        async (str1, str2) => {
+          // Create valid passwords by adding required characters
+          const validPwd1 = `ValidPass123!${str1}`;
+          const validPwd2 = `ValidPass123!${str2}`;
+
+          if (validPwd1 === validPwd2) {
+            // When passwords match, reset should succeed
+            const result = await configService.resetAdminToken(validPwd1, validPwd2);
+            expect(result.adminToken).toBe(`AT_${validPwd1}`);
+            expect(vi.mocked(configKV.put)).toHaveBeenCalled();
+          } else {
+            // When passwords don't match, reset should fail
+            await expect(
+              configService.resetAdminToken(validPwd1, validPwd2)
+            ).rejects.toThrow('PASSWORD_MISMATCH');
+            // KV.put should not be called on mismatch
+            expect(vi.mocked(configKV.put)).not.toHaveBeenCalled();
+          }
+          
+          // Clear mocks for next iteration
+          vi.clearAllMocks();
+          vi.mocked(configKV.get).mockResolvedValue(mockConfig);
+          vi.mocked(configKV.put).mockResolvedValue(undefined);
+        }
+      ),
+      { numRuns: 50 }
+    );
+  });
+
+  /**
+   * Property 3: 向后兼容性（验证需求 8）
+   * **Validates: Requirements 8**
+   * 
+   * 当不提供自定义密码参数时，系统行为应与原有实现完全一致：
+   * - 生成随机令牌
+   * - 令牌格式为 /^AT_[A-Za-z0-9_-]+$/
+   * - 令牌长度至少为 35 个字符
+   * - 每次生成的令牌都应该不同（随机性）
+   */
+  it('Property 3: Backward compatibility - generates random token when no password provided', async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        // Test with various "no password" scenarios
+        fc.constantFrom(
+          undefined,
+          null,
+          '',
+          [undefined, undefined],
+          [null, null],
+          ['', '']
+        ),
+        async (passwordInput) => {
+          let result;
+          
+          if (Array.isArray(passwordInput)) {
+            result = await configService.resetAdminToken(
+              passwordInput[0] as any,
+              passwordInput[1] as any
+            );
+          } else {
+            result = await configService.resetAdminToken(passwordInput as any);
+          }
+
+          // Verify token format matches original implementation
+          expect(result.adminToken).toMatch(/^AT_[A-Za-z0-9_-]+$/);
+          expect(result.adminToken.length).toBeGreaterThanOrEqual(35);
+          expect(result.adminToken).not.toBe(mockConfig.adminToken);
+          
+          // Verify randomness: generate another token and ensure it's different
+          vi.clearAllMocks();
+          vi.mocked(configKV.get).mockResolvedValue(mockConfig);
+          vi.mocked(configKV.put).mockResolvedValue(undefined);
+          
+          const result2 = await configService.resetAdminToken();
+          expect(result2.adminToken).toMatch(/^AT_[A-Za-z0-9_-]+$/);
+          expect(result2.adminToken).not.toBe(result.adminToken);
+          
+          // Reset mocks for next iteration
+          vi.clearAllMocks();
+          vi.mocked(configKV.get).mockResolvedValue(mockConfig);
+          vi.mocked(configKV.put).mockResolvedValue(undefined);
+        }
+      ),
+      { numRuns: 20 }
+    );
+  });
+});
+
+describe('ConfigService - resetAdminToken Unit Tests (Custom Password)', () => {
+  const mockConfig: SystemConfig = {
+    adminToken: 'AT_old_token_12345',
+    rateLimit: { perMinute: 10 },
+    retention: { days: 30 },
+    createdAt: '2024-01-01T00:00:00.000Z',
+    updatedAt: '2024-01-01T00:00:00.000Z',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(configKV.get).mockResolvedValue(mockConfig);
+    vi.mocked(configKV.put).mockResolvedValue(undefined);
+  });
+
+  /**
+   * 测试1: 测试自动生成令牌
+   * 当不提供密码参数时，应该自动生成随机令牌
+   */
+  it('should generate random token when no password provided', async () => {
+    const result = await configService.resetAdminToken();
+
+    expect(result.adminToken).toBeDefined();
+    expect(result.adminToken).toMatch(/^AT_[A-Za-z0-9_-]+$/);
+    expect(result.adminToken.length).toBeGreaterThanOrEqual(35);
+    expect(result.adminToken).not.toBe(mockConfig.adminToken);
+    expect(vi.mocked(configKV.put)).toHaveBeenCalledWith(
+      KVKeys.CONFIG,
+      expect.objectContaining({
+        adminToken: expect.stringMatching(/^AT_[A-Za-z0-9_-]+$/),
+      })
+    );
+  });
+
+  /**
+   * 测试2: 测试自定义密码
+   * 当提供有效的自定义密码和确认密码时，应该使用该密码
+   */
+  it('should use custom password when valid password and confirmation provided', async () => {
+    const customPassword = 'MyCustomPass123!';
+    const result = await configService.resetAdminToken(customPassword, customPassword);
+
+    expect(result.adminToken).toBe(customPassword);
+    expect(vi.mocked(configKV.put)).toHaveBeenCalledWith(
+      KVKeys.CONFIG,
+      expect.objectContaining({
+        adminToken: customPassword,
+      })
+    );
+  });
+
+  /**
+   * 测试3: 测试密码不匹配
+   * 当新密码和确认密码不一致时，应该抛出错误
+   */
+  it('should throw error when passwords do not match', async () => {
+    const password1 = 'MyPassword123!';
+    const password2 = 'DifferentPass456!';
+
+    await expect(
+      configService.resetAdminToken(password1, password2)
+    ).rejects.toThrow('PASSWORD_MISMATCH');
+
+    // 验证没有调用 KV.put
+    expect(vi.mocked(configKV.put)).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 测试4: 测试缺少确认密码
+   * 当提供新密码但缺少确认密码时，应该抛出错误
+   */
+  it('should throw error when confirmation password is missing', async () => {
+    const password = 'MyPassword123!';
+
+    await expect(
+      configService.resetAdminToken(password)
+    ).rejects.toThrow('CONFIRMATION_REQUIRED');
+
+    await expect(
+      configService.resetAdminToken(password, undefined)
+    ).rejects.toThrow('CONFIRMATION_REQUIRED');
+
+    await expect(
+      configService.resetAdminToken(password, '')
+    ).rejects.toThrow('CONFIRMATION_REQUIRED');
+
+    // 验证没有调用 KV.put
+    expect(vi.mocked(configKV.put)).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 测试5: 测试密码格式不符合要求
+   * 当密码不符合复杂度要求时，应该抛出错误
+   */
+  it('should throw error when password does not meet complexity requirements', async () => {
+    // 测试各种不符合要求的密码
+    const invalidPasswords = [
+      'short',                    // 太短
+      'lowercase123!',            // 缺少大写字母
+      'UPPERCASE123!',            // 缺少小写字母
+      'NoNumbers!Abc',            // 缺少数字
+      'NoSpecial123Abc',          // 缺少特殊字符
+      'weakpassword',             // 多个要求不满足
+    ];
+
+    for (const invalidPassword of invalidPasswords) {
+      await expect(
+        configService.resetAdminToken(invalidPassword, invalidPassword)
+      ).rejects.toThrow('PASSWORD_INVALID');
+    }
+
+    // 验证没有调用 KV.put
+    expect(vi.mocked(configKV.put)).not.toHaveBeenCalled();
+  });
+
+  /**
+   * 额外测试: 验证空字符串被视为未提供密码
+   */
+  it('should treat empty string as no password and generate random token', async () => {
+    const result = await configService.resetAdminToken('', '');
+
+    expect(result.adminToken).toMatch(/^AT_[A-Za-z0-9_-]+$/);
+    expect(result.adminToken.length).toBeGreaterThanOrEqual(35);
+  });
+
+  /**
+   * 额外测试: 验证更新时间戳
+   */
+  it('should update updatedAt timestamp when resetting token', async () => {
+    const mockNow = '2024-12-01T12:00:00.000Z';
+    vi.mocked(now).mockReturnValue(mockNow);
+
+    const result = await configService.resetAdminToken();
+
+    expect(result.updatedAt).toBe(mockNow);
+  });
+
+  /**
+   * 额外测试: 验证其他配置字段保持不变
+   */
+  it('should preserve other config fields when resetting token', async () => {
+    const customPassword = 'ValidPass123!';
+    const result = await configService.resetAdminToken(customPassword, customPassword);
+
+    expect(result.rateLimit).toEqual(mockConfig.rateLimit);
+    expect(result.retention).toEqual(mockConfig.retention);
+    expect(result.createdAt).toBe(mockConfig.createdAt);
   });
 });

@@ -2,7 +2,7 @@
  * 配置 API
  */
 
-import type { ApiResponse, SystemConfig, ResetTokenResult } from '~/types';
+import type { ApiResponse, SystemConfig, ResetTokenResult, ResetTokenRequest } from '~/types';
 import { useRequest } from './useRequest';
 
 export function useConfigApi() {
@@ -24,9 +24,21 @@ export function useConfigApi() {
 
   /**
    * 重置管理员令牌
+   * @param newPassword - 可选：自定义密码
+   * @param confirmPassword - 可选：确认密码
    */
-  function resetAdminToken(): Promise<ApiResponse<ResetTokenResult>> {
-    return post<ResetTokenResult>('/config/reset-token');
+  function resetAdminToken(
+    newPassword?: string,
+    confirmPassword?: string
+  ): Promise<ApiResponse<ResetTokenResult>> {
+    const payload: ResetTokenRequest = {};
+    
+    if (newPassword) {
+      payload.newPassword = newPassword;
+      payload.confirmPassword = confirmPassword;
+    }
+    
+    return post<ResetTokenResult>('/config/reset-token', payload);
   }
 
   return {

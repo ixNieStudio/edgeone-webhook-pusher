@@ -322,6 +322,11 @@ export class OpenAPIBuilder {
     const pathParts = route.path.split('/').filter(Boolean);
     const resource = pathParts[0];
 
+    // 特殊处理 reset-token 端点
+    if (route.path === '/config/reset-token' && route.method === 'post') {
+      return 'ResetTokenRequest';
+    }
+
     if (route.method === 'post') {
       const schemaMap: Record<string, string> = {
         channels: 'CreateChannelInput',
@@ -423,6 +428,11 @@ export class OpenAPIBuilder {
   private inferResponseSchema(route: RouteInfo): string | null {
     const pathParts = route.path.split('/').filter(Boolean);
     const resource = pathParts[0];
+
+    // 特殊处理 reset-token 端点
+    if (route.path === '/config/reset-token' && route.method === 'post') {
+      return 'ResetTokenResult';
+    }
 
     // 列表响应
     if (route.method === 'get' && !route.path.includes('{')) {

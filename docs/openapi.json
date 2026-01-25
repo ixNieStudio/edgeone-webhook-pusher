@@ -353,6 +353,148 @@
         }
       }
     },
+    "/apps/{appId}/bindcode/": {
+      "parameters": [
+        {
+          "name": "appId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 ID"
+        }
+      ],
+      "post": {
+        "tags": [
+          "BindCode"
+        ],
+        "summary": "生成绑定码",
+        "operationId": "postAppsByappIdBindcode",
+        "responses": {
+          "200": {
+            "description": "绑定码信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "5 分钟。如果是认证服务号，还会生成二维码。",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}/bindcode/{code}": {
+      "parameters": [
+        {
+          "name": "appId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 ID"
+        },
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "code parameter"
+        }
+      ],
+      "get": {
+        "tags": [
+          "BindCode"
+        ],
+        "summary": "查询绑定码状态",
+        "operationId": "getAppsByappIdBindcodeBycode",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "查询指定绑定码的当前状态（等待绑定/已绑定/已过期）",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
     "/channels/": {
       "get": {
         "tags": [
@@ -600,6 +742,126 @@
         ]
       }
     },
+    "/channels/{id}/verify": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "验证渠道配置",
+        "operationId": "getChannelsByidVerify",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "Access Token 来验证",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/token-status": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "Token 状态",
+        "operationId": "getChannelsByidToken-status",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "Access Token 的维护状态，包括最后刷新时间、是否成功、过期时间等",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
     "/config/": {
       "get": {
         "tags": [
@@ -698,6 +960,334 @@
             }
           }
         }
+      }
+    },
+    "/config/reset-token": {
+      "post": {
+        "tags": [
+          "Config"
+        ],
+        "summary": "重置管理员令牌",
+        "operationId": "postConfigReset-token",
+        "responses": {
+          "200": {
+            "description": "- 重置成功"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResetTokenResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "- 密码验证失败"
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "**自定义密码要求：** - 长度至少 12 个字符 - 包含至少一个大写字母 (A-Z) - 包含至少一个小写字母 (a-z) - 包含至少一个数字 (0-9) - 包含至少一个特殊字符 (!@#$%^&*()_+-=[]{}|;:,.<>?) **使用方式：** - 不提供参数：自动生成随机令牌（向后兼容） - 提供 newPassword 和 confirmPassword：使用自定义密码",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetTokenRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/apps/": {
+      "get": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "获取所有体验应用",
+        "operationId": "getDemoApps",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "返回所有标记为体验的应用列表"
+      },
+      "post": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "创建新的体验应用",
+        "operationId": "postDemoApps",
+        "responses": {
+          "200": {
+            "description": "创建的体验应用信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "创建一个新的体验应用，自动使用固定模板和第一个渠道",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/apps/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "获取体验应用详情",
+        "operationId": "getDemoAppsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "ID 获取单个体验应用的详细信息"
+      },
+      "delete": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "删除体验应用",
+        "operationId": "deleteDemoAppsByid",
+        "responses": {
+          "204": {
+            "description": "删除成功"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID"
+      }
+    },
+    "/demo/apps/{id}/bindcode": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "post": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "为体验应用生成绑定码",
+        "operationId": "postDemoAppsByidBindcode",
+        "responses": {
+          "200": {
+            "description": "URL，如果可用）"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "6 位数字绑定码，用于用户绑定微信。如果渠道支持，还会生成二维码",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/apps/{id}/bindcode/{code}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        },
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "code parameter"
+        }
+      ],
+      "get": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "查询绑定码状态",
+        "operationId": "getDemoAppsByidBindcodeBycode",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "查询指定绑定码的状态（pending/bound/expired）"
       }
     },
     "/init/status": {
@@ -818,7 +1408,7 @@
             "description": "未授权"
           }
         },
-        "description": "分页获取推送消息的历史记录，支持按应用和日期筛选",
+        "description": "分页获取消息历史记录，支持按渠道、应用、用户、方向和日期筛选",
         "security": [
           {
             "BearerAuth": []
@@ -1213,7 +1803,7 @@
         "tags": [
           "Webhook"
         ],
-        "summary": "GET /wechat - 微信服务器验证（无渠道 ID）",
+        "summary": "GET /wechat - 微信服务器验证（无渠道 ID，使用空 token）",
         "operationId": "getWechat",
         "responses": {
           "200": {
@@ -1245,7 +1835,7 @@
         "tags": [
           "Webhook"
         ],
-        "summary": "POST /wechat - 处理微信消息和事件",
+        "summary": "POST /wechat - 处理微信消息和事件（无渠道 ID）",
         "operationId": "postWechat",
         "responses": {
           "201": {
@@ -1328,6 +1918,51 @@
           },
           "404": {
             "description": "资源不存在"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "POST /wechat/:channelId - 处理微信消息和事件（带渠道 ID）",
+        "operationId": "postWechatBychannelId",
+        "responses": {
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
           }
         }
       }
@@ -1512,6 +2147,9 @@
               },
               "appSecret": {
                 "type": "string"
+              },
+              "msgToken": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -1547,6 +2185,12 @@
             "type": "string"
           },
           "updatedAt": {
+            "type": "string"
+          },
+          "isDemoApp": {
+            "type": "boolean"
+          },
+          "demoCreatedAt": {
             "type": "string"
           }
         },
@@ -1615,6 +2259,9 @@
           "nickname": {
             "type": "string"
           },
+          "avatar": {
+            "type": "string"
+          },
           "remark": {
             "type": "string"
           },
@@ -1644,6 +2291,9 @@
           "nickname": {
             "type": "string"
           },
+          "avatar": {
+            "type": "string"
+          },
           "remark": {
             "type": "string"
           }
@@ -1659,6 +2309,9 @@
           "nickname": {
             "type": "string"
           },
+          "avatar": {
+            "type": "string"
+          },
           "remark": {
             "type": "string"
           }
@@ -1671,13 +2324,37 @@
           "id": {
             "type": "string"
           },
+          "direction": {
+            "$ref": "#/components/schemas/MessageDirection"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MessageRecordType"
+          },
+          "channelId": {
+            "type": "string"
+          },
           "appId": {
+            "type": "string"
+          },
+          "appName": {
+            "type": "string"
+          },
+          "openId": {
+            "type": "string"
+          },
+          "userNickname": {
+            "type": "string"
+          },
+          "userAvatar": {
             "type": "string"
           },
           "title": {
             "type": "string"
           },
           "desp": {
+            "type": "string"
+          },
+          "event": {
             "type": "string"
           },
           "results": {
@@ -1692,9 +2369,10 @@
         },
         "required": [
           "id",
-          "appId",
+          "direction",
+          "type",
+          "channelId",
           "title",
-          "results",
           "createdAt"
         ],
         "additionalProperties": false
@@ -1843,6 +2521,41 @@
           },
           "error": {
             "type": "string"
+          }
+        }
+      },
+      "ResetTokenRequest": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "description": "自定义密码（可选）。需符合复杂度要求：至少12个字符，包含大小写字母、数字和特殊字符",
+            "example": "MySecurePass123!"
+          },
+          "confirmPassword": {
+            "type": "string",
+            "description": "确认密码（使用自定义密码时必填）",
+            "example": "MySecurePass123!"
+          }
+        }
+      },
+      "ResetTokenResult": {
+        "type": "object",
+        "properties": {
+          "adminToken": {
+            "type": "string",
+            "description": "新的管理员令牌",
+            "example": "AT_MySecurePass123!"
+          },
+          "message": {
+            "type": "string",
+            "description": "提示信息",
+            "example": "管理员密码已重置为自定义密码。请妥善保管新密码，旧令牌已失效。"
+          },
+          "isCustomPassword": {
+            "type": "boolean",
+            "description": "是否使用自定义密码",
+            "example": true
           }
         }
       },
