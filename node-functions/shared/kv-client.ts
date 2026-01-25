@@ -142,7 +142,14 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       const baseUrl = getBaseUrl();
       const url = `${baseUrl}/api/kv/${namespace}?action=get&key=${encodeURIComponent(key)}`;
       
-      debugLog(`GET ${namespace}/${key}`, { baseUrl, url });
+      // 始终打印关键信息用于调试
+      console.log('\x1b[35m[KV Client]\x1b[0m GET request:', {
+        namespace,
+        key,
+        baseUrl,
+        fullUrl: url,
+        hasInternalKey: !!getInternalKey(),
+      });
       
       try {
         const res = await fetch(url, {
@@ -151,10 +158,16 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
         
         const data = await res.json() as KVResponse<R>;
         
-        debugLog(`GET ${namespace}/${key} response:`, data);
+        console.log('\x1b[35m[KV Client]\x1b[0m GET response:', {
+          namespace,
+          key,
+          success: data.success,
+          hasData: !!data.data,
+          error: data.error,
+        });
         
         if (!data.success) {
-          errorLog(`KV GET failed for ${namespace}/${key}`, {
+          console.error('\x1b[31m[KV Client Error]\x1b[0m GET failed:', {
             baseUrl,
             url,
             key,
@@ -167,12 +180,13 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       } catch (error) {
         // 捕获 fetch 错误
         if (error instanceof Error && !error.message.includes('KV get failed')) {
-          errorLog(`KV GET fetch error for ${namespace}/${key}`, {
+          console.error('\x1b[31m[KV Client Error]\x1b[0m GET fetch error:', {
             baseUrl,
             url,
             key,
             namespace,
             error: error.message,
+            stack: error.stack,
           });
         }
         throw error;

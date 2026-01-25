@@ -18,9 +18,29 @@ import { runKVOperation } from '../shared/kv-client.js';
  * 支持 EdgeOne 和其他部署环境
  */
 export function extractBaseUrl(ctx: Context): string {
+  // 打印所有相关的请求信息用于调试
+  console.log('=== KV Base URL Detection ===');
+  console.log('Request URL:', ctx.url);
+  console.log('Request Method:', ctx.method);
+  console.log('Headers:', JSON.stringify({
+    'host': ctx.get('host'),
+    'x-forwarded-host': ctx.get('x-forwarded-host'),
+    'x-forwarded-proto': ctx.get('x-forwarded-proto'),
+    'x-forwarded-for': ctx.get('x-forwarded-for'),
+    'referer': ctx.get('referer'),
+    'origin': ctx.get('origin'),
+    'user-agent': ctx.get('user-agent'),
+  }, null, 2));
+  console.log('ctx.protocol:', ctx.protocol);
+  console.log('ctx.host:', ctx.host);
+  console.log('ctx.origin:', ctx.origin);
+  console.log('ctx.hostname:', ctx.hostname);
+  
   // 优先使用环境变量（本地开发或显式配置）
   const envUrl = process.env.KV_BASE_URL;
   if (envUrl && envUrl.trim()) {
+    console.log('Using KV_BASE_URL from env:', envUrl.trim());
+    console.log('=============================\n');
     return envUrl.trim();
   }
 
@@ -30,6 +50,7 @@ export function extractBaseUrl(ctx: Context): string {
   // 如果 ctx.origin 为 null，手动构建
   if (!origin || origin === 'null') {
     const protocol = ctx.get('x-forwarded-proto') || ctx.protocol || 'https';
+    console.log('Detected protocol:', protocol);
     
     // EdgeOne 特殊处理：从 referer 中提取真实域名
     const referer = ctx.get('referer');
@@ -37,21 +58,29 @@ export function extractBaseUrl(ctx: Context): string {
       try {
         const refererUrl = new URL(referer);
         origin = `${protocol}://${refererUrl.host}`;
+        console.log('Extracted origin from referer:', origin);
+        console.log('=============================\n');
         return origin;
       } catch (e) {
+        console.log('Failed to parse referer:', e);
         // 解析失败，继续使用后备方案
       }
     }
     
     // 后备方案：使用 Host 头
     const host = ctx.get('x-forwarded-host') || ctx.get('host') || ctx.host;
+    console.log('Detected host:', host);
     if (host) {
       origin = `${protocol}://${host}`;
     } else {
+      console.log('WARNING: No host found!');
+      console.log('=============================\n');
       return '';
     }
   }
   
+  console.log('Final baseUrl:', origin);
+  console.log('=============================\n');
   return origin;
 }
 
