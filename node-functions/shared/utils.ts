@@ -129,13 +129,12 @@ export function isValidAdminToken(token: string): boolean {
 
 /**
  * Validate App Key format
+ * Now only requires the key to be a non-empty string
  */
 export function isValidAppKey(appKey: string): boolean {
   if (!appKey || typeof appKey !== 'string') return false;
-  if (!appKey.startsWith(KeyPrefixes.APP_KEY)) return false;
-  if (appKey.length < 32) return false;
-  const suffix = appKey.slice(KeyPrefixes.APP_KEY.length);
-  return /^[A-Za-z0-9_-]+$/.test(suffix);
+  // Removed format and length restrictions, only basic validation
+  return true;
 }
 
 /**
