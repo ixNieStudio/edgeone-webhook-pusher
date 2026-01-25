@@ -109,13 +109,22 @@ export function maskCredentials<T extends Record<string, unknown>>(
 
 /**
  * Validate Admin Token format
+ * 支持两种格式：
+ * 1. 自动生成的 token：AT_ + 32 URL-safe 字符（总长度 35+ 字符）
+ * 2. 自定义密码：符合密码复杂度要求（至少 12 个字符，包含大小写字母、数字和特殊字符）
  */
 export function isValidAdminToken(token: string): boolean {
   if (!token || typeof token !== 'string') return false;
-  if (!token.startsWith(KeyPrefixes.ADMIN_TOKEN)) return false;
-  if (token.length < 35) return false;
-  const suffix = token.slice(KeyPrefixes.ADMIN_TOKEN.length);
-  return /^[A-Za-z0-9_-]+$/.test(suffix);
+  
+  // 检查是否为自动生成的 token（以 AT_ 开头）
+  if (token.startsWith(KeyPrefixes.ADMIN_TOKEN)) {
+    if (token.length < 35) return false;
+    const suffix = token.slice(KeyPrefixes.ADMIN_TOKEN.length);
+    return /^[A-Za-z0-9_-]+$/.test(suffix);
+  }
+  
+  // 检查是否为自定义密码（符合密码复杂度要求）
+  return validatePasswordFormat(token);
 }
 
 /**
