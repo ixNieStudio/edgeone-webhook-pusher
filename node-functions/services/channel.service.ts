@@ -27,25 +27,40 @@ class ChannelService {
     if (!name || !name.trim()) {
       throw ApiError.badRequest('Channel name is required');
     }
-    if (!config?.appId) {
-      throw ApiError.badRequest('appId is required');
-    }
-    if (!config?.appSecret) {
-      throw ApiError.badRequest('appSecret is required');
+
+    // 根据渠道类型验证配置
+    if (type === 'wechat') {
+      const wechatConfig = config as any;
+      if (!wechatConfig?.appId) {
+        throw ApiError.badRequest('appId is required for WeChat channel');
+      }
+      if (!wechatConfig?.appSecret) {
+        throw ApiError.badRequest('appSecret is required for WeChat channel');
+      }
     }
 
     const id = generateChannelId();
     const timestamp = now();
 
+    // 根据渠道类型创建配置
+    let channelConfig: any;
+    if (type === 'wechat') {
+      const wechatConfig = config as any;
+      channelConfig = {
+        appId: wechatConfig.appId,
+        appSecret: wechatConfig.appSecret,
+        msgToken: generateMsgToken(), // 自动生成消息回调 Token
+      };
+    } else {
+      // 其他渠道类型的配置（后续任务实现）
+      channelConfig = config;
+    }
+
     const channel: Channel = {
       id,
       name: name.trim(),
       type: type as Channel['type'],
-      config: {
-        appId: config.appId,
-        appSecret: config.appSecret,
-        msgToken: generateMsgToken(), // 自动生成消息回调 Token
-      },
+      config: channelConfig,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -67,11 +82,14 @@ class ChannelService {
   async getById(id: string): Promise<Channel | null> {
     const channel = await channelsKV.get<Channel>(KVKeys.CHANNEL(id));
     
-    // 如果渠道存在但没有 msgToken，自动生成并保存
-    if (channel && !channel.config.msgToken) {
-      channel.config.msgToken = generateMsgToken();
-      channel.updatedAt = now();
-      await channelsKV.put(KVKeys.CHANNEL(id), channel);
+    // 如果渠道存在且是微信渠道但没有 msgToken，自动生成并保存
+    if (channel && channel.type === 'wechat') {
+      const wechatConfig = channel.config as any;
+      if (!wechatConfig.msgToken) {
+        wechatConfig.msgToken = generateMsgToken();
+        channel.updatedAt = now();
+        await channelsKV.put(KVKeys.CHANNEL(id), channel);
+      }
     }
     
     return channel;
@@ -112,15 +130,18 @@ class ChannelService {
       channel.name = name.trim();
     }
 
-    if (config) {
-      if (config.appId !== undefined) {
-        channel.config.appId = config.appId;
+    if (config && channel.type === 'wechat') {
+      const wechatConfig = channel.config as any;
+      const updateConfig = config as any;
+      
+      if (updateConfig.appId !== undefined) {
+        wechatConfig.appId = updateConfig.appId;
       }
-      if (config.appSecret !== undefined) {
-        channel.config.appSecret = config.appSecret;
+      if (updateConfig.appSecret !== undefined) {
+        wechatConfig.appSecret = updateConfig.appSecret;
       }
-      if (config.msgToken !== undefined) {
-        channel.config.msgToken = config.msgToken;
+      if (updateConfig.msgToken !== undefined) {
+        wechatConfig.msgToken = updateConfig.msgToken;
       }
     }
 
@@ -174,14 +195,19 @@ class ChannelService {
    * 脱敏渠道配置
    */
   maskChannel(channel: Channel): Channel {
-    return {
-      ...channel,
-      config: {
-        appId: channel.config.appId,
-        appSecret: maskCredential(channel.config.appSecret),
-        msgToken: channel.config.msgToken, // 不脱敏，用户需要复制到微信后台
-      },
-    };
+    if (channel.type === 'wechat') {
+      const wechatConfig = channel.config as any;
+      return {
+        ...channel,
+        config: {
+          appId: wechatConfig.appId,
+          appSecret: maskCredential(wechatConfig.appSecret),
+          msgToken: wechatConfig.msgToken, // 不脱敏，用户需要复制到微信后台
+        },
+      };
+    }
+    // 其他渠道类型的脱敏逻辑（后续任务实现）
+    return channel;
   }
 }
 

@@ -47,17 +47,22 @@ class AppService {
     const key = generateAppKey();
     const timestamp = now();
 
+    // 获取渠道类型以确定应用配置类型
+    const channelType = channel.type;
+
+    // 根据渠道类型创建对应的应用配置
     const app: App = {
       id,
       key,
       name: name.trim(),
       channelId,
+      channelType: channelType as any, // 临时类型断言，后续任务会完善
       pushMode,
       messageType,
       ...(templateId && { templateId }),
       createdAt: timestamp,
       updatedAt: timestamp,
-    };
+    } as App;
 
     // 保存应用
     await appsKV.put(KVKeys.APP(id), app);
@@ -133,11 +138,11 @@ class AppService {
     }
 
     if (templateId !== undefined) {
-      app.templateId = templateId;
+      (app as any).templateId = templateId;
     }
 
     // 验证 templateId（模板消息必填）
-    if (app.messageType === MessageTypes.TEMPLATE && !app.templateId) {
+    if ((app as any).messageType === MessageTypes.TEMPLATE && !(app as any).templateId) {
       throw ApiError.badRequest('templateId is required when messageType is template');
     }
 

@@ -65,7 +65,11 @@ export function getWeChatErrorMessage(errcode: number): string {
  * Generate cache key for access token based on channel
  */
 export function getAccessTokenCacheKey(channel: Channel): string {
-  return `wechat_access_token:${channel.config.appId}`;
+  if (channel.type === 'wechat') {
+    const config = channel.config as any;
+    return `wechat_access_token:${config.appId}`;
+  }
+  throw new Error('Invalid channel type for access token cache key');
 }
 
 /**
@@ -122,7 +126,12 @@ export async function getAccessToken(channel: Channel, forceRefresh = false): Pr
     throw new Error('Channel is required');
   }
 
-  const { appId, appSecret } = channel.config;
+  if (channel.type !== 'wechat') {
+    throw new Error('Channel must be of type wechat');
+  }
+
+  const config = channel.config as any;
+  const { appId, appSecret } = config;
   if (!appId || !appSecret) {
     console.error('WeChat config not found in channel');
     return null;
@@ -283,7 +292,12 @@ export async function verifyChannelConfig(channel: Channel): Promise<{ valid: bo
     return { valid: false, error: '渠道不存在' };
   }
 
-  const { appId, appSecret } = channel.config;
+  if (channel.type !== 'wechat') {
+    return { valid: false, error: '渠道类型不是微信' };
+  }
+
+  const config = channel.config as any;
+  const { appId, appSecret } = config;
   if (!appId || !appSecret) {
     return { valid: false, error: '缺少 AppID 或 AppSecret' };
   }

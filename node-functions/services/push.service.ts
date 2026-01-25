@@ -14,6 +14,7 @@ import { channelService } from './channel.service.js';
 import { messageService } from './message.service.js';
 import { wechatService } from './wechat.service.js';
 import { generatePushId, now } from '../shared/utils.js';
+import { isWeChatApp } from '../shared/type-guards.js';
 import type { PushResult, PushMessageInput, DeliveryResult, Message } from '../types/index.js';
 import { PushModes, MessageTypes } from '../types/index.js';
 
@@ -63,9 +64,13 @@ class PushService {
 
     // 根据推送模式确定目标 OpenID
     let targetOpenIds = openIds;
-    if (app.pushMode === PushModes.SINGLE) {
-      // 单发模式：只发送给第一个 OpenID
-      targetOpenIds = [openIds[0]];
+    
+    // 使用类型守卫检查应用类型
+    if (isWeChatApp(app)) {
+      if (app.pushMode === PushModes.SINGLE) {
+        // 单发模式：只发送给第一个 OpenID
+        targetOpenIds = [openIds[0]];
+      }
     }
 
     // 发送消息
@@ -77,7 +82,8 @@ class PushService {
       try {
         let result: { success: boolean; msgId?: string; error?: string };
         
-        if (app.messageType === MessageTypes.TEMPLATE && app.templateId) {
+        // 使用类型守卫安全地访问微信应用配置
+        if (isWeChatApp(app) && app.messageType === MessageTypes.TEMPLATE && app.templateId) {
           // 发送模板消息
           const templateData = {
             first: { value: message.title || '' },

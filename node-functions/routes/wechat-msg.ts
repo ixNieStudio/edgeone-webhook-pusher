@@ -72,8 +72,11 @@ router.get('/wechat/:channelId', async (ctx: AppContext) => {
   let token = '';
   try {
     const channel = await channelService.getById(channelId);
-    if (channel?.config?.msgToken) {
-      token = channel.config.msgToken;
+    if (channel && channel.type === 'wechat') {
+      const wechatConfig = channel.config as any;
+      if (wechatConfig?.msgToken) {
+        token = wechatConfig.msgToken;
+      }
     }
   } catch {
     // 获取失败时使用空 token

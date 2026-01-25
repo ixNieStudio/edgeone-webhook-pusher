@@ -49,17 +49,23 @@ describe('Demo Apps API Routes', () => {
       vi.mocked(demoAppService.create).mockResolvedValue({
         id: 'test-id',
         name: 'Test App',
+        key: 'test-key',
+        channelId: 'test-channel',
+        channelType: 'wechat',
         pushMode: 'template' as const,
+        messageType: 'normal',
         isDemoApp: true,
         demoCreatedAt: new Date().toISOString(),
-      });
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any);
       
       // 模拟列表操作
       await demoAppService.list();
       expect(triggerCleanupMock).toHaveBeenCalledTimes(0); // 服务层不触发
       
       // 模拟创建操作
-      await demoAppService.create({ name: 'Test', pushMode: 'template' });
+      await demoAppService.create({ name: 'Test', pushMode: 'single', messageType: 'normal' } as any);
       expect(triggerCleanupMock).toHaveBeenCalledTimes(0); // 服务层不触发
       
       // 验证：路由层应该触发清理（通过集成测试验证）
@@ -70,7 +76,8 @@ describe('Demo Apps API Routes', () => {
         fc.asyncProperty(
           fc.record({
             name: fc.string({ minLength: 1, maxLength: 50 }),
-            pushMode: fc.constantFrom('template' as const, 'custom' as const),
+            pushMode: fc.constantFrom('single' as const, 'subscribe' as const),
+            messageType: fc.constantFrom('normal' as const, 'template' as const),
           }),
           async (input) => {
             process.env.DEMO_MODE = 'true';
@@ -83,17 +90,23 @@ describe('Demo Apps API Routes', () => {
             const mockApp = {
               id: 'test-id',
               name: input.name,
+              key: 'test-key',
+              channelId: 'test-channel',
+              channelType: 'wechat',
               pushMode: input.pushMode,
+              messageType: 'normal',
               isDemoApp: true,
               demoCreatedAt: new Date().toISOString(),
-            };
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            } as any;
             vi.mocked(demoAppService.create).mockResolvedValue(mockApp);
             
             // 即使清理任务失败，服务也应该成功响应
             const result = await demoAppService.create(input);
             
             expect(result.name).toBe(input.name);
-            expect(result.pushMode).toBe(input.pushMode);
+            expect((result as any).pushMode).toBe(input.pushMode);
             expect(result.isDemoApp).toBe(true);
           }
         ),
@@ -135,18 +148,30 @@ describe('Demo Apps API Routes', () => {
         {
           id: 'demo-1',
           name: 'Demo App 1',
+          key: 'demo-key-1',
+          channelId: 'test-channel',
+          channelType: 'wechat',
           pushMode: 'template' as const,
+          messageType: 'normal',
           isDemoApp: true,
           demoCreatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
         {
           id: 'demo-2',
           name: 'Demo App 2',
+          key: 'demo-key-2',
+          channelId: 'test-channel',
+          channelType: 'wechat',
           pushMode: 'custom' as const,
+          messageType: 'normal',
           isDemoApp: true,
           demoCreatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
-      ];
+      ] as any[];
       
       // Mock services
       vi.mocked(demoAppService.list).mockResolvedValue(mockDemoApps);
@@ -195,17 +220,28 @@ describe('Demo Apps API Routes', () => {
       const mockDemoApp = {
         id: 'demo-1',
         name: 'Demo App',
+        key: 'demo-key',
+        channelId: 'test-channel',
+        channelType: 'wechat',
         pushMode: 'template' as const,
+        messageType: 'normal',
         isDemoApp: true,
         demoCreatedAt: new Date().toISOString(),
-      };
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any;
       
       const mockRegularApp = {
         id: 'regular-1',
         name: 'Regular App',
+        key: 'regular-key',
+        channelId: 'test-channel',
+        channelType: 'wechat',
         pushMode: 'custom' as const,
-        isDemoApp: false,
-      };
+        messageType: 'normal',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any;
       
       // Mock services
       vi.mocked(demoAppService.list).mockResolvedValue([mockDemoApp]);
