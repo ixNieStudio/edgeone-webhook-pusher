@@ -228,6 +228,11 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">应用名称</label>
                 <input v-model="editForm.name" placeholder="请输入应用名称" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">App Key</label>
+                <input v-model="editForm.key" placeholder="不填则保持不变" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">支持自定义，不重复即可</p>
+              </div>
               <div v-if="app.messageType === 'template'">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">模板 ID</label>
                 <input v-model="editForm.templateId" placeholder="微信模板消息 ID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
@@ -273,7 +278,7 @@ const showEditModal = ref(false);
 const saving = ref(false);
 const activeTab = ref(0);
 
-const editForm = ref({ name: '', templateId: '' });
+const editForm = ref({ name: '', key: '', templateId: '' });
 
 const webhookUrl = computed(() => {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -289,6 +294,7 @@ const usageTabs = [
 watch(() => props.app, (app) => {
   editForm.value = {
     name: app.name,
+    key: '', // 初始化为空，保持当前App Key不变
     templateId: app.templateId || '',
   };
   fetchOpenIds();
@@ -324,6 +330,9 @@ async function handleUpdate() {
   saving.value = true;
   try {
     const updateData: UpdateAppInput = { name: editForm.value.name.trim() };
+    if (editForm.value.key) {
+      updateData.key = editForm.value.key;
+    }
     if (props.app.messageType === 'template') {
       updateData.templateId = editForm.value.templateId.trim();
     }
