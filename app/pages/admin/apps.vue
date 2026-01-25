@@ -133,6 +133,11 @@
                 <input v-model="createForm.name" placeholder="请输入应用名称" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
               </div>
               <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">App Key</label>
+                <input v-model="createForm.key" placeholder="不填则自动生成" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">支持自定义，不重复即可</p>
+              </div>
+              <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">关联渠道</label>
                 <select v-model="createForm.channelId" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
                   <option value="" disabled>请选择渠道</option>
@@ -366,6 +371,9 @@ async function handleCreate() {
       pushMode: createForm.value.pushMode,
       messageType: createForm.value.messageType,
     };
+    if (createForm.value.key) {
+      data.key = createForm.value.key;
+    }
     if (createForm.value.messageType === MessageTypes.TEMPLATE) {
       data.templateId = templateId.value.trim();
     }
@@ -392,6 +400,7 @@ async function handleCreate() {
 function resetCreateForm() {
   createForm.value = {
     name: '',
+    key: '',
     channelId: '',
     pushMode: PushModes.SINGLE,
     messageType: MessageTypes.NORMAL,
