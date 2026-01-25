@@ -27,9 +27,11 @@ export interface CreateAppInput {
   pushMode: PushMode;
   messageType?: MessageType;
   templateId?: string;
+  key?: string; // 新增：支持自定义App Key
 }
 
 export interface UpdateAppInput {
   name?: string;
   templateId?: string;
+  key?: string; // 新增：支持修改App Key
 }
