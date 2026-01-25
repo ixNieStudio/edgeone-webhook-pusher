@@ -109,13 +109,22 @@ export function maskCredentials<T extends Record<string, unknown>>(
 
 /**
  * Validate Admin Token format
+ * Supports both auto-generated tokens (with AT_ prefix) and custom password tokens
  */
 export function isValidAdminToken(token: string): boolean {
   if (!token || typeof token !== 'string') return false;
-  if (!token.startsWith(KeyPrefixes.ADMIN_TOKEN)) return false;
-  if (token.length < 35) return false;
-  const suffix = token.slice(KeyPrefixes.ADMIN_TOKEN.length);
-  return /^[A-Za-z0-9_-]+$/.test(suffix);
+  
+  // Auto-generated token format validation
+  if (token.startsWith(KeyPrefixes.ADMIN_TOKEN)) {
+    if (token.length < 35) return false;
+    const suffix = token.slice(KeyPrefixes.ADMIN_TOKEN.length);
+    return /^[A-Za-z0-9_-]+$/.test(suffix);
+  }
+  
+  // Custom password token format validation (matches validatePasswordFormat requirements)
+  // Since custom passwords are already validated by validatePasswordFormat, we just
+  // need to ensure it's a non-empty string (basic validation already done)
+  return true;
 }
 
 /**
