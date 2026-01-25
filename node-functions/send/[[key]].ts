@@ -23,6 +23,9 @@ const app = new Koa();
 // 信任代理（EdgeOne 环境必需）
 app.proxy = true;
 
+// KV Base URL 中间件（必须在业务逻辑之前）
+app.use(kvBaseUrlMiddleware);
+
 // CORS 中间件
 app.use(async (ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*');
@@ -39,9 +42,6 @@ app.use(async (ctx, next) => {
 
 // Body parser
 app.use(bodyParser());
-
-// KV Base URL 中间件
-app.use(kvBaseUrlMiddleware);
 
 // 主处理逻辑
 app.use(async (ctx) => {
