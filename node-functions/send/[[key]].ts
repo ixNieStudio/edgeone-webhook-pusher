@@ -129,9 +129,9 @@ function extractAppKey(pathname: string): string | null {
   }
 
   // Pattern: /:appKey (EdgeOne catch-all route, path is just the key)
-  // 当 EdgeOne 使用 [[key]].ts 时，ctx.path 可能只是 /APKxxx
+  // 当 EdgeOne 使用 [[key]].ts 时，ctx.path 可能只是 /appKey
   const directMatch = pathname.match(/^\/([A-Za-z0-9_-]+)$/);
-  if (directMatch && directMatch[1].startsWith('APK')) {
+  if (directMatch) {
     return directMatch[1];
   }
 
