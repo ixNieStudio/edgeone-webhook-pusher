@@ -83,6 +83,13 @@
 1. 点击顶部「Deploy to EdgeOne」按钮，登录EdgeOne账号
 2. 绑定5个KV命名空间：`CONFIG_KV`、`CHANNELS_KV`、`APPS_KV`、`OPENIDS_KV`、`MESSAGES_KV`
 3. 配置构建参数（Root: `/`，Output: `dist`，Build: `yarn build`）
+4. **⚠️ 重要：配置环境变量**
+   - 在 EdgeOne 项目设置中添加环境变量：
+   - `KV_BASE_URL=https://your-custom-domain.com`（替换为你的自定义域名）
+   - 如果使用 EdgeOne 默认域名，则设置为：`KV_BASE_URL=https://your-project.edgeone.cool`
+
+> 💡 **为什么需要配置 KV_BASE_URL？**  
+> EdgeOne Node Functions 需要通过 Edge Functions 访问 KV 存储。直接访问 `/send/*` 接口时，系统无法自动检测到公共域名，必须手动配置环境变量指定完整的域名地址。
 
 ### 使用流程
 

@@ -1,5 +1,25 @@
 <template>
-  <div class="h-full flex">
+  <div class="h-full flex flex-col">
+    <!-- 环境变量配置提示横幅 -->
+    <div class="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
+      <div class="flex items-start gap-3">
+        <Icon icon="tabler:alert-triangle" class="text-amber-600 dark:text-amber-400 text-lg shrink-0 mt-0.5" />
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-amber-800 dark:text-amber-300 mb-1">
+            重要：请确保已配置环境变量
+          </p>
+          <p class="text-xs text-amber-700 dark:text-amber-400">
+            微信消息回调需要访问 KV 存储。请在 EdgeOne 项目设置中配置：
+            <code class="mx-1 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 rounded text-[11px] font-mono">
+              KV_BASE_URL=https://your-domain.com
+            </code>
+            （使用你的自定义域名或 EdgeOne 默认域名）
+          </p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="flex-1 flex min-h-0">
     <!-- Desktop: Two-panel layout -->
     <template v-if="!isMobile">
       <!-- List Panel -->
@@ -158,6 +178,7 @@
         <div class="fixed inset-0 bg-black/50 -z-10" @click="showCreateModal = false"></div>
       </div>
     </div>
+  </div>
   </div>
 </template>
 

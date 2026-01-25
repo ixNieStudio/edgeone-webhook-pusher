@@ -30,6 +30,25 @@
             <p class="text-[var(--text-secondary)] text-sm mb-6">
               系统尚未初始化，点击下方按钮生成管理令牌
             </p>
+            
+            <!-- 环境变量配置提示 -->
+            <div class="p-4 rounded-lg bg-info-100 dark:bg-info-900/20 border border-info-300 dark:border-info-800 text-info-700 dark:text-info-400 mb-6 text-left">
+              <div class="flex gap-2 mb-2">
+                <Icon icon="tabler:info-circle-filled" class="text-lg shrink-0 mt-0.5" />
+                <span class="text-sm font-medium">初始化前请确认</span>
+              </div>
+              <div class="text-xs space-y-1 ml-6">
+                <p>1. 已在 EdgeOne 项目中绑定 5 个 KV 命名空间</p>
+                <p>2. 已配置环境变量：</p>
+                <code class="block mt-1 px-2 py-1 bg-white/50 dark:bg-black/20 rounded text-[11px] font-mono">
+                  KV_BASE_URL=https://your-domain.com
+                </code>
+                <p class="text-[11px] opacity-75 mt-1">
+                  ⚠️ 建议使用你的自定义域名
+                </p>
+              </div>
+            </div>
+            
             <button
               class="btn btn-lg btn-solid-primary w-full"
               :disabled="initializing"
