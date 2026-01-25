@@ -13,7 +13,7 @@ class AppService {
    * 创建应用
    */
   async create(data: CreateAppInput): Promise<App> {
-    const { name, channelId, pushMode, messageType = MessageTypes.NORMAL, templateId } = data;
+    const { name, channelId, pushMode, messageType = MessageTypes.NORMAL, templateId, key: customKey } = data;
 
     // 验证必填字段
     if (!name || !name.trim()) {
@@ -43,8 +43,16 @@ class AppService {
       throw ApiError.notFound('Channel not found', ErrorCodes.CHANNEL_NOT_FOUND);
     }
 
+    // Generate or use custom app key
+    const key = customKey || generateAppKey();
+    
+    // Check if app key is already in use
+    const existingAppId = await appsKV.get<string>(KVKeys.APP_INDEX(key));
+    if (existingAppId) {
+      throw ApiError.badRequest('App Key is already in use');
+    }
+
     const id = generateAppId();
-    const key = generateAppKey();
     const timestamp = now();
 
     const app: App = {
@@ -123,7 +131,7 @@ class AppService {
       throw ApiError.notFound('App not found', ErrorCodes.APP_NOT_FOUND);
     }
 
-    const { name, templateId } = data;
+    const { name, templateId, key: newKey } = data;
 
     if (name !== undefined) {
       if (!name.trim()) {
@@ -134,6 +142,24 @@ class AppService {
 
     if (templateId !== undefined) {
       app.templateId = templateId;
+    }
+
+    // Handle app key update
+    if (newKey !== undefined && newKey !== app.key) {
+      // Check if new key is already in use
+      const existingAppId = await appsKV.get<string>(KVKeys.APP_INDEX(newKey));
+      if (existingAppId) {
+        throw ApiError.badRequest('App Key is already in use');
+      }
+      
+      // Delete old key index
+      await appsKV.delete(KVKeys.APP_INDEX(app.key));
+      
+      // Update app key
+      app.key = newKey;
+      
+      // Create new key index
+      await appsKV.put(KVKeys.APP_INDEX(newKey), id);
     }
 
     // 验证 templateId（模板消息必填）
