@@ -20,8 +20,8 @@
     </div>
     
     <div class="flex-1 flex min-h-0">
-    <!-- Desktop: Two-panel layout -->
-    <template v-if="!isMobile">
+      <!-- Desktop: Two-panel layout -->
+      <template v-if="!isMobile">
       <!-- List Panel -->
       <div class="w-80 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900">
         <div class="p-4 border-b border-gray-200 dark:border-gray-800">
@@ -224,6 +224,7 @@
         </div>
         <div class="fixed inset-0 bg-black/50 -z-10" @click="showCreateModal = false"></div>
       </div>
+    </div>
     </div>
   </div>
 </template>
