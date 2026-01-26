@@ -4,6 +4,9 @@
 
 export const ChannelTypes = {
   WECHAT: 'wechat',
+  WORK_WECHAT: 'work_wechat',
+  DINGTALK: 'dingtalk',
+  FEISHU: 'feishu',
 } as const;
 
 export const PushModes = {

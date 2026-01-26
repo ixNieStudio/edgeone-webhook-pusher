@@ -154,7 +154,7 @@ function addFallbackSchemas(schemas: Record<string, JSONSchema>): void {
       properties: {
         id: { type: 'string', example: 'ch_abc123' },
         name: { type: 'string', example: '我的公众号' },
-        type: { type: 'string', enum: ['wechat'], example: 'wechat' },
+        type: { type: 'string', enum: ['wechat', 'work_wechat', 'dingtalk', 'feishu'], example: 'wechat' },
         config: {
           type: 'object',
           properties: {
@@ -269,7 +269,7 @@ function addFallbackSchemas(schemas: Record<string, JSONSchema>): void {
       required: ['name', 'type', 'config'],
       properties: {
         name: { type: 'string', example: '我的公众号' },
-        type: { type: 'string', enum: ['wechat'], example: 'wechat' },
+        type: { type: 'string', enum: ['wechat', 'work_wechat', 'dingtalk', 'feishu'], example: 'wechat' },
         config: {
           type: 'object',
           required: ['appId', 'appSecret'],
@@ -339,7 +339,7 @@ function addFallbackSchemas(schemas: Record<string, JSONSchema>): void {
     },
     ChannelType: {
       type: 'string',
-      enum: ['wechat'],
+      enum: ['wechat', 'work_wechat', 'dingtalk', 'feishu'],
       description: '渠道类型',
     },
     WeChatConfig: {

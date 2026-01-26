@@ -3,7 +3,7 @@
   "info": {
     "title": "Webhook Pusher API",
     "version": "2.0.0",
-    "description": "Webhook Pusher 是一个基于 EdgeOne 的多渠道消息推送服务，支持微信公众号、企业微信、钉钉、飞书等多种推送渠道。\n\n## 架构概述\n\n系统采用策略模式 + 模板方法模式的三层架构：\n- **Channel（渠道）**: 消息发送通道配置，支持微信公众号、企业微信、钉钉、飞书等\n- **App（应用）**: 业务应用，关联渠道并定义推送配置（根据渠道类型动态变化）\n- **推送目标**: 根据渠道类型不同，可以是 OpenID（微信）、用户ID/部门ID（企业微信）或 Webhook URL（钉钉/飞书）\n\n## 渠道类型\n\n### Token 管理型渠道\n- **wechat**: 微信公众号，需要 AppID 和 AppSecret\n- **work_wechat**: 企业微信，需要企业ID、应用ID和应用密钥\n\n### Webhook 型渠道\n- **dingtalk**: 钉钉机器人，通过 Webhook URL 发送\n- **feishu**: 飞书机器人，通过 Webhook URL 发送\n\n## 认证方式\n\n管理 API 需要在请求头中携带 Admin Token：\n```\nAuthorization: Bearer <admin_token>\n```\n或\n```\nX-Admin-Token: <admin_token>\n```\n\n## Webhook 调用\n\nWebhook API 无需认证，通过 App Key 标识应用：\n```\nGET /{appKey}.send?title=消息标题&desp=消息内容\nPOST /{appKey}.send\n```\n\n## 使用示例\n\n### 1. 创建微信公众号渠道\n```json\nPOST /v1/channels/\n{\n  \"name\": \"我的微信公众号\",\n  \"type\": \"wechat\",\n  \"config\": {\n    \"appId\": \"wx1234567890abcdef\",\n    \"appSecret\": \"your_app_secret_here\",\n    \"msgToken\": \"your_msg_token\"\n  }\n}\n```\n\n### 2. 创建企业微信渠道\n```json\nPOST /v1/channels/\n{\n  \"name\": \"企业微信通知\",\n  \"type\": \"work_wechat\",\n  \"config\": {\n    \"corpId\": \"ww1234567890abcdef\",\n    \"agentId\": 1000002,\n    \"corpSecret\": \"your_corp_secret_here\"\n  }\n}\n```\n\n### 3. 创建钉钉渠道\n```json\nPOST /v1/channels/\n{\n  \"name\": \"钉钉机器人\",\n  \"type\": \"dingtalk\",\n  \"config\": {\n    \"webhookUrl\": \"https://oapi.dingtalk.com/robot/send?access_token=xxx\",\n    \"secret\": \"your_secret_here\"\n  }\n}\n```\n\n### 4. 创建飞书渠道\n```json\nPOST /v1/channels/\n{\n  \"name\": \"飞书机器人\",\n  \"type\": \"feishu\",\n  \"config\": {\n    \"webhookUrl\": \"https://open.feishu.cn/open-apis/bot/v2/hook/xxx\"\n  }\n}\n```\n\n### 5. 创建微信应用（单播模式）\n```json\nPOST /v1/apps/\n{\n  \"name\": \"个人通知\",\n  \"channelId\": \"ch_xxx\",\n  \"pushMode\": \"single\",\n  \"messageType\": \"normal\"\n}\n```\n\n### 6. 创建企业微信应用\n```json\nPOST /v1/apps/\n{\n  \"name\": \"部门通知\",\n  \"channelId\": \"ch_xxx\",\n  \"userIds\": [\"zhangsan\", \"lisi\"],\n  \"departmentIds\": [\"1\", \"2\"],\n  \"messageType\": \"text\"\n}\n```\n\n### 7. 创建钉钉应用\n```json\nPOST /v1/apps/\n{\n  \"name\": \"钉钉通知\",\n  \"channelId\": \"ch_xxx\",\n  \"atMobiles\": [\"13800138000\"],\n  \"atAll\": false\n}\n```\n\n### 8. 发送消息\n```bash\n# GET 方式\ncurl \"https://your-domain.com/v1/APK_xxx.send?title=测试消息&desp=这是消息内容\"\n\n# POST 方式\ncurl -X POST \"https://your-domain.com/v1/APK_xxx.send\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"title\":\"测试消息\",\"desp\":\"这是消息内容\"}'\n```\n\n## 错误码说明\n\n### 微信公众号错误码\n- **40001**: AppSecret 错误或 Access Token 无效\n- **40003**: OpenID 无效\n- **42001**: Access Token 已过期（系统会自动重试）\n- **45015**: 用户未关注公众号\n\n### 企业微信错误码\n- **40001**: Secret 无效\n- **40003**: UserID 无效\n- **40014**: Access Token 无效（系统会自动重试）\n- **60011**: 部门不存在\n- **60020**: 成员不存在\n- **81013**: 应用权限不足\n\n系统会自动处理 Token 过期错误并重试，无需手动干预。",
+    "description": "Webhook Pusher 是一个基于 EdgeOne 的消息推送服务，支持通过 Webhook 发送微信公众号消息。\n\n## 架构概述\n\n系统采用三层架构：\n- **Channel（渠道）**: 消息发送通道配置，如微信公众号\n- **App（应用）**: 业务应用，关联渠道并定义推送模式\n- **OpenID**: 应用下绑定的微信用户\n\n## 认证方式\n\n管理 API 需要在请求头中携带 Admin Token：\n```\nAuthorization: Bearer <admin_token>\n```\n或\n```\nX-Admin-Token: <admin_token>\n```\n\n## Webhook 调用\n\nWebhook API 无需认证，通过 App Key 标识应用：\n```\nGET /{appKey}.send?title=消息标题&desp=消息内容\nPOST /{appKey}.send\n```",
     "contact": {
       "name": "ixNieStudio",
       "email": "colin@ixnie.cn"
@@ -140,7 +140,7 @@
             "description": "未授权"
           }
         },
-        "description": "创建一个新的业务应用，需要关联已存在的渠道。应用配置字段根据渠道类型动态变化：\n- 微信渠道：需要 pushMode, messageType, 可选 templateId\n- 企业微信渠道：需要 userIds 或 departmentIds, messageType\n- 钉钉渠道：可选 webhookUrl, atMobiles, atAll\n- 飞书渠道：可选 webhookUrl",
+        "description": "创建一个新的业务应用，需要关联已存在的渠道",
         "security": [
           {
             "BearerAuth": []
@@ -577,7 +577,7 @@
             "description": "未授权"
           }
         },
-        "description": "创建一个新的消息发送渠道。支持的渠道类型：\n- wechat: 微信公众号（需要 appId, appSecret）\n- work_wechat: 企业微信（需要 corpId, agentId, corpSecret）\n- dingtalk: 钉钉机器人（需要 webhookUrl）\n- feishu: 飞书机器人（需要 webhookUrl）",
+        "description": "创建一个新的消息发送渠道",
         "security": [
           {
             "BearerAuth": []
@@ -2112,15 +2112,13 @@
           "createdAt",
           "updatedAt"
         ],
-        "additionalProperties": false,
-        "description": "渠道配置，支持微信公众号、企业微信、钉钉、飞书等多种渠道类型"
+        "additionalProperties": false
       },
       "CreateChannelInput": {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "渠道名称"
+            "type": "string"
           },
           "type": {
             "$ref": "#/components/schemas/ChannelType"
@@ -2131,118 +2129,58 @@
         },
         "required": [
           "name",
-          "type",
           "config"
         ],
-        "additionalProperties": false,
-        "description": "创建渠道输入，config 字段根据 type 类型不同而不同"
+        "additionalProperties": false
       },
       "UpdateChannelInput": {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "渠道名称"
+            "type": "string"
           },
           "config": {
-            "$ref": "#/components/schemas/ChannelConfig"
+            "type": "object",
+            "properties": {
+              "appId": {
+                "type": "string"
+              },
+              "appSecret": {
+                "type": "string"
+              },
+              "msgToken": {
+                "type": "string"
+              },
+              "corpId": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "number"
+              },
+              "corpSecret": {
+                "type": "string"
+              },
+              "webhookUrl": {
+                "type": "string"
+              },
+              "secret": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           }
         },
-        "additionalProperties": false,
-        "description": "更新渠道输入，config 字段根据渠道类型不同而不同"
+        "additionalProperties": false
       },
-      "App": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "channelId": {
-            "type": "string"
-          },
-          "channelType": {
-            "$ref": "#/components/schemas/ChannelType"
-          },
-          "pushMode": {
-            "$ref": "#/components/schemas/PushMode"
-          },
-          "messageType": {
-            "$ref": "#/components/schemas/MessageType"
-          },
-          "templateId": {
-            "type": "string",
-            "description": "模板ID（微信渠道使用）"
-          },
-          "userIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "目标用户ID列表（企业微信渠道使用）"
-          },
-          "departmentIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "目标部门ID列表（企业微信渠道使用）"
-          },
-          "webhookUrl": {
-            "type": "string",
-            "description": "Webhook URL（钉钉/飞书渠道使用）"
-          },
-          "atMobiles": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "@的手机号列表（钉钉渠道使用）"
-          },
-          "atAll": {
-            "type": "boolean",
-            "description": "是否@所有人（钉钉渠道使用）"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "isDemoApp": {
-            "type": "boolean"
-          },
-          "demoCreatedAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "key",
-          "name",
-          "channelId",
-          "channelType",
-          "createdAt",
-          "updatedAt"
-        ],
-        "additionalProperties": false,
-        "description": "应用配置，字段根据关联的渠道类型动态变化"
-      },
+      "App": {},
       "CreateAppInput": {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "应用名称"
+            "type": "string"
           },
           "channelId": {
-            "type": "string",
-            "description": "关联的渠道ID"
+            "type": "string"
           },
           "pushMode": {
             "$ref": "#/components/schemas/PushMode"
@@ -2251,95 +2189,74 @@
             "$ref": "#/components/schemas/MessageType"
           },
           "templateId": {
-            "type": "string",
-            "description": "模板ID（微信渠道使用）"
+            "type": "string"
           },
           "userIds": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "目标用户ID列表（企业微信渠道使用）"
+            }
           },
           "departmentIds": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "目标部门ID列表（企业微信渠道使用）"
+            }
           },
           "webhookUrl": {
-            "type": "string",
-            "description": "Webhook URL（钉钉/飞书渠道使用，可选，默认使用渠道配置）"
+            "type": "string"
           },
           "atMobiles": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "@的手机号列表（钉钉渠道使用）"
+            }
           },
           "atAll": {
-            "type": "boolean",
-            "description": "是否@所有人（钉钉渠道使用）"
+            "type": "boolean"
           }
         },
         "required": [
           "name",
           "channelId"
         ],
-        "additionalProperties": false,
-        "description": "创建应用输入，必需字段根据渠道类型不同而不同"
+        "additionalProperties": false
       },
       "UpdateAppInput": {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "应用名称"
-          },
-          "pushMode": {
-            "$ref": "#/components/schemas/PushMode"
-          },
-          "messageType": {
-            "$ref": "#/components/schemas/MessageType"
+            "type": "string"
           },
           "templateId": {
-            "type": "string",
-            "description": "模板ID（微信渠道使用）"
+            "type": "string"
           },
           "userIds": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "目标用户ID列表（企业微信渠道使用）"
+            }
           },
           "departmentIds": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "目标部门ID列表（企业微信渠道使用）"
+            }
           },
           "webhookUrl": {
-            "type": "string",
-            "description": "Webhook URL（钉钉/飞书渠道使用）"
+            "type": "string"
           },
           "atMobiles": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "@的手机号列表（钉钉渠道使用）"
+            }
           },
           "atAll": {
-            "type": "boolean",
-            "description": "是否@所有人（钉钉渠道使用）"
+            "type": "boolean"
           }
         },
-        "additionalProperties": false,
-        "description": "更新应用输入，可更新字段根据渠道类型不同而不同"
+        "additionalProperties": false
       },
       "OpenID": {
         "type": "object",
@@ -2588,7 +2505,7 @@
           "dingtalk",
           "feishu"
         ],
-        "description": "渠道类型：wechat=微信公众号, work_wechat=企业微信, dingtalk=钉钉, feishu=飞书"
+        "description": "渠道类型"
       },
       "WeChatConfig": {
         "type": "object",
@@ -2604,179 +2521,23 @@
           "appSecret": {
             "type": "string",
             "description": "微信公众号 AppSecret"
-          },
-          "msgToken": {
-            "type": "string",
-            "description": "消息服务器配置 Token（可选）"
           }
         }
-      },
-      "WorkWeChatConfig": {
-        "type": "object",
-        "required": [
-          "corpId",
-          "agentId",
-          "corpSecret"
-        ],
-        "properties": {
-          "corpId": {
-            "type": "string",
-            "description": "企业微信企业ID"
-          },
-          "agentId": {
-            "type": "number",
-            "description": "企业微信应用ID"
-          },
-          "corpSecret": {
-            "type": "string",
-            "description": "企业微信应用密钥"
-          }
-        },
-        "description": "企业微信渠道配置"
-      },
-      "WebhookConfig": {
-        "type": "object",
-        "required": [
-          "webhookUrl"
-        ],
-        "properties": {
-          "webhookUrl": {
-            "type": "string",
-            "description": "Webhook URL 地址"
-          },
-          "secret": {
-            "type": "string",
-            "description": "签名密钥（可选，用于验证请求）"
-          }
-        },
-        "description": "Webhook 渠道配置（钉钉、飞书等）"
-      },
-      "ChannelConfig": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/WeChatConfig"
-          },
-          {
-            "$ref": "#/components/schemas/WorkWeChatConfig"
-          },
-          {
-            "$ref": "#/components/schemas/WebhookConfig"
-          }
-        ],
-        "description": "渠道配置，根据渠道类型不同而不同"
       },
       "DeliveryResult": {
         "type": "object",
         "properties": {
           "openId": {
-            "type": "string",
-            "description": "目标标识（OpenID、用户ID、部门ID或Webhook URL）"
+            "type": "string"
           },
           "success": {
-            "type": "boolean",
-            "description": "是否发送成功"
+            "type": "boolean"
           },
           "msgId": {
-            "type": "string",
-            "description": "消息ID（发送成功时返回）"
+            "type": "string"
           },
           "error": {
-            "type": "string",
-            "description": "错误信息（发送失败时返回）"
-          },
-          "errorCode": {
-            "type": "number",
-            "description": "错误码（发送失败时返回）"
-          }
-        },
-        "required": [
-          "openId",
-          "success"
-        ]
-      },
-      "ErrorCodes": {
-        "type": "object",
-        "description": "常见错误码说明",
-        "properties": {
-          "wechat": {
-            "type": "object",
-            "description": "微信公众号错误码",
-            "properties": {
-              "40001": {
-                "type": "string",
-                "example": "AppSecret 错误或 Access Token 无效"
-              },
-              "40002": {
-                "type": "string",
-                "example": "无效的凭证类型"
-              },
-              "40003": {
-                "type": "string",
-                "example": "OpenID 无效"
-              },
-              "40013": {
-                "type": "string",
-                "example": "AppID 无效"
-              },
-              "40125": {
-                "type": "string",
-                "example": "AppSecret 无效"
-              },
-              "41001": {
-                "type": "string",
-                "example": "缺少 Access Token"
-              },
-              "42001": {
-                "type": "string",
-                "example": "Access Token 已过期"
-              },
-              "45015": {
-                "type": "string",
-                "example": "用户未关注公众号"
-              },
-              "48001": {
-                "type": "string",
-                "example": "API 未授权"
-              }
-            }
-          },
-          "work_wechat": {
-            "type": "object",
-            "description": "企业微信错误码",
-            "properties": {
-              "40001": {
-                "type": "string",
-                "example": "Secret 无效"
-              },
-              "40003": {
-                "type": "string",
-                "example": "UserID 无效"
-              },
-              "40013": {
-                "type": "string",
-                "example": "CorpID 无效"
-              },
-              "40014": {
-                "type": "string",
-                "example": "Access Token 无效"
-              },
-              "42001": {
-                "type": "string",
-                "example": "Access Token 已过期"
-              },
-              "60011": {
-                "type": "string",
-                "example": "部门不存在"
-              },
-              "60020": {
-                "type": "string",
-                "example": "成员不存在"
-              },
-              "81013": {
-                "type": "string",
-                "example": "应用权限不足"
-              }
-            }
+            "type": "string"
           }
         }
       },

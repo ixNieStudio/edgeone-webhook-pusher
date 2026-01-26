@@ -2095,7 +2095,7 @@
             "$ref": "#/components/schemas/ChannelType"
           },
           "config": {
-            "$ref": "#/components/schemas/WeChatConfig"
+            "$ref": "#/components/schemas/ChannelConfig"
           },
           "createdAt": {
             "type": "string"
@@ -2124,7 +2124,7 @@
             "$ref": "#/components/schemas/ChannelType"
           },
           "config": {
-            "$ref": "#/components/schemas/WeChatConfig"
+            "$ref": "#/components/schemas/ChannelConfig"
           }
         },
         "required": [
@@ -2150,6 +2150,21 @@
               },
               "msgToken": {
                 "type": "string"
+              },
+              "corpId": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "number"
+              },
+              "corpSecret": {
+                "type": "string"
+              },
+              "webhookUrl": {
+                "type": "string"
+              },
+              "secret": {
+                "type": "string"
               }
             },
             "additionalProperties": false
@@ -2157,55 +2172,7 @@
         },
         "additionalProperties": false
       },
-      "App": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "channelId": {
-            "type": "string"
-          },
-          "pushMode": {
-            "$ref": "#/components/schemas/PushMode"
-          },
-          "messageType": {
-            "$ref": "#/components/schemas/MessageType"
-          },
-          "templateId": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "isDemoApp": {
-            "type": "boolean"
-          },
-          "demoCreatedAt": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "key",
-          "name",
-          "channelId",
-          "pushMode",
-          "messageType",
-          "createdAt",
-          "updatedAt"
-        ],
-        "additionalProperties": false
-      },
+      "App": {},
       "CreateAppInput": {
         "type": "object",
         "properties": {
@@ -2223,12 +2190,35 @@
           },
           "templateId": {
             "type": "string"
+          },
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "webhookUrl": {
+            "type": "string"
+          },
+          "atMobiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "atAll": {
+            "type": "boolean"
           }
         },
         "required": [
           "name",
-          "channelId",
-          "pushMode"
+          "channelId"
         ],
         "additionalProperties": false
       },
@@ -2240,6 +2230,30 @@
           },
           "templateId": {
             "type": "string"
+          },
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "webhookUrl": {
+            "type": "string"
+          },
+          "atMobiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "atAll": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -2486,7 +2500,10 @@
       "ChannelType": {
         "type": "string",
         "enum": [
-          "wechat"
+          "wechat",
+          "work_wechat",
+          "dingtalk",
+          "feishu"
         ],
         "description": "渠道类型"
       },
