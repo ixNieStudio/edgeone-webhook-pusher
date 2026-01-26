@@ -5,7 +5,7 @@
 
 import { appsKV, channelsKV, openidsKV } from '../shared/kv-client.js';
 import { generateAppId, generateAppKey, now } from '../shared/utils.js';
-import type { App, CreateAppInput, UpdateAppInput, Channel, OpenID } from '../types/index.js';
+import type { App, CreateAppInput, UpdateAppInput, Channel, OpenID, WeChatAppConfig, WorkWeChatAppConfig, WebhookAppConfig } from '../types/index.js';
 import { KVKeys, PushModes, MessageTypes, ApiError, ErrorCodes } from '../types/index.js';
 
 class AppService {
@@ -13,7 +13,7 @@ class AppService {
    * 创建应用
    */
   async create(data: CreateAppInput): Promise<App> {
-    const { name, channelId, pushMode, messageType = MessageTypes.NORMAL, templateId } = data;
+    const { name, channelId } = data;
 
     // 验证必填字段
     if (!name || !name.trim()) {
@@ -22,20 +22,6 @@ class AppService {
     if (!channelId) {
       throw ApiError.badRequest('channelId is required');
     }
-    if (!pushMode) {
-      throw ApiError.badRequest('pushMode is required');
-    }
-    if (!Object.values(PushModes).includes(pushMode)) {
-      throw ApiError.badRequest(`pushMode must be one of: ${Object.values(PushModes).join(', ')}`);
-    }
-    if (!Object.values(MessageTypes).includes(messageType)) {
-      throw ApiError.badRequest(`messageType must be one of: ${Object.values(MessageTypes).join(', ')}`);
-    }
-
-    // 验证 templateId（模板消息必填）
-    if (messageType === MessageTypes.TEMPLATE && !templateId) {
-      throw ApiError.badRequest('templateId is required when messageType is template');
-    }
 
     // 验证渠道存在
     const channel = await channelsKV.get<Channel>(KVKeys.CHANNEL(channelId));
@@ -43,26 +29,15 @@ class AppService {
       throw ApiError.notFound('Channel not found', ErrorCodes.CHANNEL_NOT_FOUND);
     }
 
+    // 根据渠道类型验证配置字段
+    this.validateAppConfig(channel.type, data);
+
     const id = generateAppId();
-    const key = generateAppKey();
+    const key = await this.generateUniqueAppKey();
     const timestamp = now();
 
-    // 获取渠道类型以确定应用配置类型
-    const channelType = channel.type;
-
     // 根据渠道类型创建对应的应用配置
-    const app: App = {
-      id,
-      key,
-      name: name.trim(),
-      channelId,
-      channelType: channelType as any, // 临时类型断言，后续任务会完善
-      pushMode,
-      messageType,
-      ...(templateId && { templateId }),
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    } as App;
+    const app = this.buildAppConfig(id, key, name.trim(), channelId, channel.type, data, timestamp);
 
     // 保存应用
     await appsKV.put(KVKeys.APP(id), app);
@@ -76,6 +51,148 @@ class AppService {
     await appsKV.put(KVKeys.APP_LIST, list);
 
     return app;
+  }
+
+  /**
+   * 验证应用配置字段（根据渠道类型）
+   */
+  private validateAppConfig(channelType: string, data: CreateAppInput): void {
+    switch (channelType) {
+      case 'wechat': {
+        // 微信渠道：需要 pushMode 和 messageType
+        if (!data.pushMode) {
+          throw ApiError.badRequest('pushMode is required for WeChat channel');
+        }
+        if (!Object.values(PushModes).includes(data.pushMode)) {
+          throw ApiError.badRequest(`pushMode must be one of: ${Object.values(PushModes).join(', ')}`);
+        }
+        
+        const messageType = data.messageType || MessageTypes.NORMAL;
+        if (!Object.values(MessageTypes).includes(messageType)) {
+          throw ApiError.badRequest(`messageType must be one of: ${Object.values(MessageTypes).join(', ')}`);
+        }
+        
+        // 验证 templateId（模板消息必填）
+        if (messageType === MessageTypes.TEMPLATE && !data.templateId) {
+          throw ApiError.badRequest('templateId is required when messageType is template');
+        }
+        break;
+      }
+      
+      case 'work_wechat': {
+        // 企业微信渠道：需要 userIds 或 departmentIds（至少一个）
+        if (!data.userIds?.length && !data.departmentIds?.length) {
+          throw ApiError.badRequest('At least one of userIds or departmentIds is required for WorkWeChat channel');
+        }
+        
+        // 验证 messageType
+        const messageType = data.messageType || 'text';
+        if (!['text', 'template_card'].includes(messageType)) {
+          throw ApiError.badRequest('messageType must be one of: text, template_card');
+        }
+        break;
+      }
+      
+      case 'dingtalk':
+      case 'feishu': {
+        // Webhook 渠道：需要 webhookUrl
+        if (!data.webhookUrl) {
+          throw ApiError.badRequest(`webhookUrl is required for ${channelType} channel`);
+        }
+        break;
+      }
+      
+      default:
+        throw ApiError.badRequest(`Unsupported channel type: ${channelType}`);
+    }
+  }
+
+  /**
+   * 根据渠道类型构建应用配置
+   */
+  private buildAppConfig(
+    id: string,
+    key: string,
+    name: string,
+    channelId: string,
+    channelType: string,
+    data: CreateAppInput,
+    timestamp: string
+  ): App {
+    const baseConfig = {
+      id,
+      key,
+      name,
+      channelId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    switch (channelType) {
+      case 'wechat': {
+        return {
+          ...baseConfig,
+          channelType: 'wechat',
+          pushMode: data.pushMode!,
+          messageType: data.messageType || MessageTypes.NORMAL,
+          ...(data.templateId && { templateId: data.templateId }),
+        };
+      }
+      
+      case 'work_wechat': {
+        return {
+          ...baseConfig,
+          channelType: 'work_wechat',
+          messageType: (data.messageType as 'text' | 'template_card') || 'text',
+          ...(data.userIds && { userIds: data.userIds }),
+          ...(data.departmentIds && { departmentIds: data.departmentIds }),
+        };
+      }
+      
+      case 'dingtalk': {
+        return {
+          ...baseConfig,
+          channelType: 'dingtalk',
+          webhookUrl: data.webhookUrl!,
+          ...(data.atMobiles && { atMobiles: data.atMobiles }),
+          ...(data.atAll !== undefined && { atAll: data.atAll }),
+        };
+      }
+      
+      case 'feishu': {
+        return {
+          ...baseConfig,
+          channelType: 'feishu',
+          webhookUrl: data.webhookUrl!,
+        };
+      }
+      
+      default:
+        throw ApiError.badRequest(`Unsupported channel type: ${channelType}`);
+    }
+  }
+
+  /**
+   * 生成唯一的应用密钥
+   */
+  private async generateUniqueAppKey(): Promise<string> {
+    let key: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    do {
+      key = generateAppKey();
+      const existingId = await appsKV.get<string>(KVKeys.APP_INDEX(key));
+      
+      if (!existingId) {
+        return key;
+      }
+      
+      attempts++;
+      if (attempts >= maxAttempts) {
+        throw ApiError.internal('Failed to generate unique app key after multiple attempts');
+      }
+    } while (true);
   }
 
   /**
@@ -128,8 +245,9 @@ class AppService {
       throw ApiError.notFound('App not found', ErrorCodes.APP_NOT_FOUND);
     }
 
-    const { name, templateId } = data;
+    const { name } = data;
 
+    // 更新名称
     if (name !== undefined) {
       if (!name.trim()) {
         throw ApiError.badRequest('App name cannot be empty');
@@ -137,19 +255,99 @@ class AppService {
       app.name = name.trim();
     }
 
-    if (templateId !== undefined) {
-      (app as any).templateId = templateId;
-    }
-
-    // 验证 templateId（模板消息必填）
-    if ((app as any).messageType === MessageTypes.TEMPLATE && !(app as any).templateId) {
-      throw ApiError.badRequest('templateId is required when messageType is template');
-    }
+    // 根据渠道类型更新配置字段
+    this.updateAppConfigFields(app, data);
 
     app.updatedAt = now();
 
     await appsKV.put(KVKeys.APP(id), app);
     return app;
+  }
+
+  /**
+   * 根据渠道类型更新应用配置字段
+   */
+  private updateAppConfigFields(app: App, data: UpdateAppInput): void {
+    switch (app.channelType) {
+      case 'wechat': {
+        const wechatApp = app as WeChatAppConfig;
+        
+        // 更新 templateId
+        if (data.templateId !== undefined) {
+          wechatApp.templateId = data.templateId;
+        }
+        
+        // 验证 templateId（模板消息必填）
+        if (wechatApp.messageType === MessageTypes.TEMPLATE && !wechatApp.templateId) {
+          throw ApiError.badRequest('templateId is required when messageType is template');
+        }
+        break;
+      }
+      
+      case 'work_wechat': {
+        const workWechatApp = app as WorkWeChatAppConfig;
+        
+        // 更新 userIds
+        if (data.userIds !== undefined) {
+          if (data.userIds.length > 0) {
+            workWechatApp.userIds = data.userIds;
+          } else {
+            delete workWechatApp.userIds;
+          }
+        }
+        
+        // 更新 departmentIds
+        if (data.departmentIds !== undefined) {
+          if (data.departmentIds.length > 0) {
+            workWechatApp.departmentIds = data.departmentIds;
+          } else {
+            delete workWechatApp.departmentIds;
+          }
+        }
+        
+        // 验证至少有一个目标
+        if (!workWechatApp.userIds?.length && !workWechatApp.departmentIds?.length) {
+          throw ApiError.badRequest('At least one of userIds or departmentIds is required for WorkWeChat channel');
+        }
+        break;
+      }
+      
+      case 'dingtalk': {
+        const dingtalkApp = app as WebhookAppConfig;
+        
+        // 更新 webhookUrl
+        if (data.webhookUrl !== undefined) {
+          if (!data.webhookUrl) {
+            throw ApiError.badRequest('webhookUrl cannot be empty for DingTalk channel');
+          }
+          dingtalkApp.webhookUrl = data.webhookUrl;
+        }
+        
+        // 更新 atMobiles
+        if (data.atMobiles !== undefined) {
+          dingtalkApp.atMobiles = data.atMobiles;
+        }
+        
+        // 更新 atAll
+        if (data.atAll !== undefined) {
+          dingtalkApp.atAll = data.atAll;
+        }
+        break;
+      }
+      
+      case 'feishu': {
+        const feishuApp = app as WebhookAppConfig;
+        
+        // 更新 webhookUrl
+        if (data.webhookUrl !== undefined) {
+          if (!data.webhookUrl) {
+            throw ApiError.badRequest('webhookUrl cannot be empty for Feishu channel');
+          }
+          feishuApp.webhookUrl = data.webhookUrl;
+        }
+        break;
+      }
+    }
   }
 
   /**

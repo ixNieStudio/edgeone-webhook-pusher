@@ -194,7 +194,7 @@ describe('WeChatStrategy - Property-Based Tests', () => {
           // 生成随机的消息和目标
           fc.record({
             title: fc.string({ minLength: 1, maxLength: 100 }),
-            desp: fc.option(fc.string({ maxLength: 500 })),
+            desp: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
           }),
           fc.string({ minLength: 10, maxLength: 30 }), // openId
           // 生成 token 失效错误码（40001 或 42001）
@@ -372,7 +372,7 @@ describe('WeChatStrategy - Property-Based Tests', () => {
           // 生成随机的消息
           fc.record({
             title: fc.string({ minLength: 1, maxLength: 100 }),
-            desp: fc.option(fc.string({ maxLength: 500 })),
+            desp: fc.option(fc.string({ maxLength: 500 }), { nil: undefined }),
           }),
           // 生成随机的目标列表（1-10 个目标）
           fc.array(fc.string({ minLength: 10, maxLength: 30 }), { minLength: 1, maxLength: 10 }),

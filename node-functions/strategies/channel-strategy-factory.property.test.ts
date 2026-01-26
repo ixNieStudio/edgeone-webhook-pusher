@@ -39,7 +39,7 @@ describe('ChannelStrategyFactory Property Tests', () => {
     const wechatConfig = fc.record({
       appId: fc.string({ minLength: 1 }),
       appSecret: fc.string({ minLength: 1 }),
-      msgToken: fc.option(fc.string()),
+      msgToken: fc.option(fc.string(), { nil: undefined }),
     });
 
     // 生成企业微信配置
@@ -52,7 +52,7 @@ describe('ChannelStrategyFactory Property Tests', () => {
     // 生成 Webhook 配置
     const webhookConfig = fc.record({
       webhookUrl: fc.webUrl(),
-      secret: fc.option(fc.string()),
+      secret: fc.option(fc.string(), { nil: undefined }),
     });
 
     // 根据渠道类型生成对应的配置
@@ -213,7 +213,7 @@ describe('ChannelStrategyFactory Property Tests', () => {
               id,
               name: 'Invalid Channel',
               type: invalidType as any,
-              config: {},
+              config: { appId: 'test', appSecret: 'test' } as any,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             };

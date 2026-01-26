@@ -29,32 +29,13 @@ class ChannelService {
     }
 
     // 根据渠道类型验证配置
-    if (type === 'wechat') {
-      const wechatConfig = config as any;
-      if (!wechatConfig?.appId) {
-        throw ApiError.badRequest('appId is required for WeChat channel');
-      }
-      if (!wechatConfig?.appSecret) {
-        throw ApiError.badRequest('appSecret is required for WeChat channel');
-      }
-    }
+    this.validateChannelConfig(type, config);
 
     const id = generateChannelId();
     const timestamp = now();
 
     // 根据渠道类型创建配置
-    let channelConfig: any;
-    if (type === 'wechat') {
-      const wechatConfig = config as any;
-      channelConfig = {
-        appId: wechatConfig.appId,
-        appSecret: wechatConfig.appSecret,
-        msgToken: generateMsgToken(), // 自动生成消息回调 Token
-      };
-    } else {
-      // 其他渠道类型的配置（后续任务实现）
-      channelConfig = config;
-    }
+    const channelConfig = this.buildChannelConfig(type, config);
 
     const channel: Channel = {
       id,
@@ -74,6 +55,67 @@ class ChannelService {
     await channelsKV.put(KVKeys.CHANNEL_LIST, list);
 
     return channel;
+  }
+
+  /**
+   * 验证渠道配置
+   */
+  private validateChannelConfig(type: string, config: any): void {
+    if (type === 'wechat') {
+      if (!config?.appId) {
+        throw ApiError.badRequest('appId is required for WeChat channel');
+      }
+      if (!config?.appSecret) {
+        throw ApiError.badRequest('appSecret is required for WeChat channel');
+      }
+    } else if (type === 'work_wechat') {
+      if (!config?.corpId) {
+        throw ApiError.badRequest('corpId is required for WorkWeChat channel');
+      }
+      if (!config?.agentId) {
+        throw ApiError.badRequest('agentId is required for WorkWeChat channel');
+      }
+      if (!config?.corpSecret) {
+        throw ApiError.badRequest('corpSecret is required for WorkWeChat channel');
+      }
+    } else if (type === 'dingtalk' || type === 'feishu') {
+      if (!config?.webhookUrl) {
+        throw ApiError.badRequest(`webhookUrl is required for ${type} channel`);
+      }
+      // 验证 webhookUrl 格式
+      try {
+        new URL(config.webhookUrl);
+      } catch {
+        throw ApiError.badRequest('Invalid webhookUrl format');
+      }
+    } else {
+      throw ApiError.badRequest(`Unsupported channel type: ${type}`);
+    }
+  }
+
+  /**
+   * 构建渠道配置
+   */
+  private buildChannelConfig(type: string, config: any): any {
+    if (type === 'wechat') {
+      return {
+        appId: config.appId,
+        appSecret: config.appSecret,
+        msgToken: generateMsgToken(), // 自动生成消息回调 Token
+      };
+    } else if (type === 'work_wechat') {
+      return {
+        corpId: config.corpId,
+        agentId: config.agentId,
+        corpSecret: config.corpSecret,
+      };
+    } else if (type === 'dingtalk' || type === 'feishu') {
+      return {
+        webhookUrl: config.webhookUrl,
+        secret: config.secret, // 可选的签名密钥
+      };
+    }
+    return config;
   }
 
   /**
@@ -130,9 +172,22 @@ class ChannelService {
       channel.name = name.trim();
     }
 
-    if (config && channel.type === 'wechat') {
+    if (config) {
+      this.updateChannelConfig(channel, config);
+    }
+
+    channel.updatedAt = now();
+
+    await channelsKV.put(KVKeys.CHANNEL(id), channel);
+    return channel;
+  }
+
+  /**
+   * 更新渠道配置
+   */
+  private updateChannelConfig(channel: Channel, updateConfig: any): void {
+    if (channel.type === 'wechat') {
       const wechatConfig = channel.config as any;
-      const updateConfig = config as any;
       
       if (updateConfig.appId !== undefined) {
         wechatConfig.appId = updateConfig.appId;
@@ -143,12 +198,34 @@ class ChannelService {
       if (updateConfig.msgToken !== undefined) {
         wechatConfig.msgToken = updateConfig.msgToken;
       }
+    } else if (channel.type === 'work_wechat') {
+      const workWechatConfig = channel.config as any;
+      
+      if (updateConfig.corpId !== undefined) {
+        workWechatConfig.corpId = updateConfig.corpId;
+      }
+      if (updateConfig.agentId !== undefined) {
+        workWechatConfig.agentId = updateConfig.agentId;
+      }
+      if (updateConfig.corpSecret !== undefined) {
+        workWechatConfig.corpSecret = updateConfig.corpSecret;
+      }
+    } else if (channel.type === 'dingtalk' || channel.type === 'feishu') {
+      const webhookConfig = channel.config as any;
+      
+      if (updateConfig.webhookUrl !== undefined) {
+        // 验证 webhookUrl 格式
+        try {
+          new URL(updateConfig.webhookUrl);
+        } catch {
+          throw ApiError.badRequest('Invalid webhookUrl format');
+        }
+        webhookConfig.webhookUrl = updateConfig.webhookUrl;
+      }
+      if (updateConfig.secret !== undefined) {
+        webhookConfig.secret = updateConfig.secret;
+      }
     }
-
-    channel.updatedAt = now();
-
-    await channelsKV.put(KVKeys.CHANNEL(id), channel);
-    return channel;
   }
 
   /**
@@ -205,8 +282,27 @@ class ChannelService {
           msgToken: wechatConfig.msgToken, // 不脱敏，用户需要复制到微信后台
         },
       };
+    } else if (channel.type === 'work_wechat') {
+      const workWechatConfig = channel.config as any;
+      return {
+        ...channel,
+        config: {
+          corpId: workWechatConfig.corpId,
+          agentId: workWechatConfig.agentId,
+          corpSecret: maskCredential(workWechatConfig.corpSecret),
+        },
+      };
+    } else if (channel.type === 'dingtalk' || channel.type === 'feishu') {
+      const webhookConfig = channel.config as any;
+      return {
+        ...channel,
+        config: {
+          webhookUrl: webhookConfig.webhookUrl, // Webhook URL 不脱敏
+          secret: webhookConfig.secret ? maskCredential(webhookConfig.secret) : undefined,
+        },
+      };
     }
-    // 其他渠道类型的脱敏逻辑（后续任务实现）
+    // 未知渠道类型，返回原始数据
     return channel;
   }
 }

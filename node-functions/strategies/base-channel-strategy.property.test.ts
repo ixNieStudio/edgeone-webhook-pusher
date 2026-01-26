@@ -79,9 +79,9 @@ describe('BaseChannelStrategy Property Tests', () => {
     // 生成有效的消息
     const validMessage = fc.record({
       title: fc.string({ minLength: 1 }),
-      desp: fc.option(fc.string()),
-      templateId: fc.option(fc.string()),
-      templateData: fc.option(fc.dictionary(fc.string(), fc.anything())),
+      desp: fc.option(fc.string(), { nil: undefined }),
+      templateId: fc.option(fc.string(), { nil: undefined }),
+      templateData: fc.option(fc.dictionary(fc.string(), fc.anything()), { nil: undefined }),
     });
 
     // 生成目标列表

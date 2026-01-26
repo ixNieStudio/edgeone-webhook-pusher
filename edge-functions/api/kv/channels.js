@@ -3,7 +3,7 @@
 // KV Binding: CHANNELS_KV (configured in EdgeOne Pages)
 
 // BUILD_KEY 在构建时被替换为实际值
-const BUILD_KEY = '83e3540c38928add2b6ebf156f2cf82f528ffa76ffe37e2b28b558dca5cf0f35';
+const BUILD_KEY = '31947fe16cb8e8db3c49c450173cbcca8334a5d93e26d17462aea8f689c4912c';
 
 /**
  * 验证内部 API 密钥

@@ -97,7 +97,7 @@ describe('ChannelStrategyFactory', () => {
         id: 'test-channel',
         name: 'Unknown Channel',
         type: 'unknown' as any,
-        config: {},
+        config: { appId: 'test', appSecret: 'test' } as any,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -173,7 +173,7 @@ describe('ChannelStrategyFactory', () => {
         id: 'test-channel',
         name: 'Invalid Channel',
         type: null as any,
-        config: {},
+        config: { appId: 'test', appSecret: 'test' } as any,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -186,7 +186,7 @@ describe('ChannelStrategyFactory', () => {
         id: 'test-channel',
         name: 'Invalid Channel',
         type: undefined as any,
-        config: {},
+        config: { appId: 'test', appSecret: 'test' } as any,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
@@ -199,7 +199,7 @@ describe('ChannelStrategyFactory', () => {
         id: 'test-channel',
         name: 'Invalid Channel',
         type: 'slack' as any,
-        config: {},
+        config: { appId: 'test', appSecret: 'test' } as any,
         createdAt: '2024-01-01T00:00:00Z',
         updatedAt: '2024-01-01T00:00:00Z',
       };
