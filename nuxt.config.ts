@@ -50,10 +50,19 @@ export default defineNuxtConfig({
       const rootDir = process.cwd();
       const distDir = resolve(rootDir, 'dist');
 
-      cpSync(resolve(rootDir, 'edge-functions'), resolve(distDir, 'edge-functions'), { recursive: true });
+      // 只复制 node-functions 到 dist/（edge-functions 在根目录，EdgeOne 直接读取）
       cpSync(resolve(rootDir, 'node-functions'), resolve(distDir, 'node-functions'), { recursive: true });
+      console.log('✓ Copied node-functions to dist/');
 
-      console.log('✓ Copied edge-functions and node-functions to dist/');
+      // 注入密钥到根目录的 edge-functions/（EdgeOne 从这里部署）
+      const { execSync } = require('child_process');
+      try {
+        execSync('tsx scripts/generate-internal-key.ts', { stdio: 'inherit' });
+        console.log('✓ Injected internal key into edge-functions/');
+      } catch (error) {
+        console.error('❌ Failed to inject internal key:', error);
+        process.exit(1);
+      }
     },
   },
 

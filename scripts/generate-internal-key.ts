@@ -17,9 +17,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, '..');
 
-// 占位符常量
-const BUILD_KEY_PLACEHOLDER = '__BUILD_KEY_PLACEHOLDER__';
-
 // 匹配已注入的密钥或占位符的正则表达式
 // 匹配: const BUILD_KEY = '...' 或 const BUILD_KEY = "__BUILD_KEY_PLACEHOLDER__"
 const BUILD_KEY_PATTERN = /const BUILD_KEY = ['"]([a-f0-9]{64}|__BUILD_KEY_PLACEHOLDER__)['"];?/g;
@@ -65,11 +62,34 @@ function writeKeyConfig(key: string): void {
 }
 
 /**
+ * 从源文件夹复制到输出文件夹
+ */
+function copyEdgeFunctionsFromSrc(): void {
+  const srcDir = path.join(ROOT_DIR, 'edge-functions-src');
+  const destDir = path.join(ROOT_DIR, 'edge-functions');
+
+  if (!fs.existsSync(srcDir)) {
+    console.warn(`⚠️  Source directory not found: ${srcDir}`);
+    return;
+  }
+
+  // 删除旧的输出文件夹
+  if (fs.existsSync(destDir)) {
+    fs.rmSync(destDir, { recursive: true });
+  }
+
+  // 递归复制
+  fs.cpSync(srcDir, destDir, { recursive: true });
+  console.log(`✅ Copied edge-functions-src/ to edge-functions/`);
+}
+
+/**
  * 替换 Edge Functions 中的密钥（占位符或旧密钥）
+ * 始终注入到根目录的 edge-functions/（EdgeOne 从这里部署）
  */
 function injectKeyToEdgeFunctions(key: string): void {
   const kvDir = path.join(ROOT_DIR, 'edge-functions', 'api', 'kv');
-  
+
   if (!fs.existsSync(kvDir)) {
     console.warn(`⚠️  Edge Functions KV directory not found: ${kvDir}`);
     return;
@@ -115,14 +135,16 @@ function main(): void {
   // 写入配置文件
   writeKeyConfig(key);
 
-  // 注入到 Edge Functions
+  // 从源文件夹复制到输出文件夹
+  copyEdgeFunctionsFromSrc();
+
+  // 注入到根目录的 edge-functions/（EdgeOne 从这里部署）
   injectKeyToEdgeFunctions(key);
 
   // 输出密钥（部分遮蔽）
   const maskedKey = `${key.substring(0, 8)}...${key.substring(56)}`;
   console.log(`\n🔑 Internal API Key: ${maskedKey}`);
-  console.log(`   Full key: ${key}`);
-  console.log('\n💡 Save this key to .env.local as INTERNAL_DEBUG_KEY for remote debugging\n');
+  console.log(`   Full key: ${key}\n`);
 }
 
 // 运行

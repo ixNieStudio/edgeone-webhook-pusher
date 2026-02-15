@@ -56,7 +56,7 @@
 - 🆓 **完全免费**：无推送次数/时间限制
 - ⚡ **极速部署**：EdgeOne一键部署，无需服务器
 - 📡 **Webhook调用**：一行代码/浏览器直接推送
-- 📱 **双消息模式**：模板消息 + 客服消息
+- 📱 **多渠道支持**：微信公众号、企业微信、钉钉、飞书
 - 🎛️ **可视化管理**：Web界面管理渠道/应用/历史
 - 🏠 **数据自托管**：部署在个人账号，安全可控
 - 🎁 **体验模式**：免登录试用全部功能
@@ -93,6 +93,8 @@
 
 ### 使用流程
 
+#### 微信公众号/企业微信
+
 1. **申请测试号**：访问 [微信测试号申请页](https://mp.weixin.qq.com/debug/cgi-bin/sandbox?t=sandbox/login)，扫码获取AppID/AppSecret
 2. **创建渠道**：填入测试号信息，配置服务器URL和Token
 3. **创建应用**：选择推送模式（单播/订阅）、消息类型，填入模板ID
@@ -101,7 +103,43 @@
    ```bash
    # GET请求
    curl "https://your-domain.com/send/{appKey}?title=标题&desp=内容"
-   
+
+   # POST请求
+   curl -X POST "https://your-domain.com/send/{appKey}" \
+     -H "Content-Type: application/json" \
+     -d '{"title":"标题","desp":"内容"}'
+   ```
+
+#### 钉钉群机器人
+
+1. **创建机器人**：在钉钉群设置中添加自定义机器人，获取 Webhook URL
+2. **配置安全设置**（可选）：
+   - 加签方式：获取密钥（secret），系统自动生成 HMAC-SHA256 签名
+   - 关键词方式：设置关键词，消息中需包含关键词
+3. **创建渠道**：选择「钉钉」类型，填入 Webhook URL 和密钥（如有）
+4. **创建应用**：关联钉钉渠道，获取应用密钥（appKey）
+5. **发送消息**：
+   ```bash
+   # 基础推送
+   curl "https://your-domain.com/send/{appKey}?title=标题&desp=内容"
+
+   # @指定成员（需在消息中传入 atMobiles）
+   curl -X POST "https://your-domain.com/send/{appKey}" \
+     -H "Content-Type: application/json" \
+     -d '{"title":"标题","desp":"内容","atMobiles":["13800138000"]}'
+   ```
+
+#### 飞书群机器人
+
+1. **创建机器人**：在飞书群设置中添加自定义机器人，获取 Webhook URL
+2. **配置签名验证**（可选）：启用签名验证，获取密钥（secret）
+3. **创建渠道**：选择「飞书」类型，填入 Webhook URL 和密钥（如有）
+4. **创建应用**：关联飞书渠道，获取应用密钥（appKey）
+5. **发送消息**：
+   ```bash
+   # 基础推送
+   curl "https://your-domain.com/send/{appKey}?title=标题&desp=内容"
+
    # POST请求
    curl -X POST "https://your-domain.com/send/{appKey}" \
      -H "Content-Type: application/json" \

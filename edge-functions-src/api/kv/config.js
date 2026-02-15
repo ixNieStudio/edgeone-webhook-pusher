@@ -1,9 +1,9 @@
-// Edge Function: Channels KV Operations
-// Path: /api/kv/channels
-// KV Binding: CHANNELS_KV (configured in EdgeOne Pages)
+// Edge Function: Config KV Operations
+// Path: /api/kv/config
+// KV Binding: CONFIG_KV (configured in EdgeOne Pages)
 
 // BUILD_KEY 在构建时被替换为实际值
-const BUILD_KEY = 'a1f88f58d7fb6f2628c1e8d4aaacd4f9d7830cf09bc595da8c0374af5a4679e0';
+const BUILD_KEY = '__BUILD_KEY_PLACEHOLDER__';
 
 /**
  * 验证内部 API 密钥
@@ -25,7 +25,7 @@ function isValidKey(key, env) {
 }
 
 /**
- * Handle KV operations for channels
+ * Handle KV operations for application config
  * @param {Object} context - EdgeOne EventContext
  * @param {Request} context.request - Client request object
  * @param {Object} context.params - Dynamic routing parameters
@@ -58,7 +58,7 @@ export async function onRequest(context) {
         if (!key) {
           return jsonResponse(400, { success: false, error: 'Missing key parameter' });
         }
-        const data = await CHANNELS_KV.get(key, 'json');
+        const data = await CONFIG_KV.get(key, 'json');
         return jsonResponse(200, { success: true, data });
       }
 
@@ -74,7 +74,7 @@ export async function onRequest(context) {
           return jsonResponse(400, { success: false, error: 'Missing value in body' });
         }
         const options = body.ttl ? { expirationTtl: body.ttl } : {};
-        await CHANNELS_KV.put(body.key, JSON.stringify(body.value), options);
+        await CONFIG_KV.put(body.key, JSON.stringify(body.value), options);
         return jsonResponse(200, { success: true });
       }
 
@@ -83,7 +83,7 @@ export async function onRequest(context) {
         if (!key) {
           return jsonResponse(400, { success: false, error: 'Missing key parameter' });
         }
-        await CHANNELS_KV.delete(key);
+        await CONFIG_KV.delete(key);
         return jsonResponse(200, { success: true });
       }
 
@@ -96,7 +96,7 @@ export async function onRequest(context) {
         if (cursorParam && cursorParam.length > 0) {
           listOptions.cursor = cursorParam;
         }
-        const result = await CHANNELS_KV.list(listOptions);
+        const result = await CONFIG_KV.list(listOptions);
         return jsonResponse(200, {
           success: true,
           keys: result.keys.map((k) => k.name || k.key),

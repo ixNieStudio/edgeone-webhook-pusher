@@ -1,6 +1,6 @@
 /**
  * WebhookStrategy 单元测试
- * 
+ *
  * 测试 Webhook 型渠道策略的实现
  * 需求: 12.3, 12.4
  */
@@ -207,14 +207,11 @@ describe('DingTalkStrategy (需求 12.4)', () => {
 
       const messageBody = (strategy as any).buildMessage(message, '13800138000');
 
+      // 没有配置 atMobiles，不应该有 at 字段
       expect(messageBody).toEqual({
         msgtype: 'text',
         text: {
           content: 'Test Title\n\nTest Description',
-        },
-        at: {
-          atMobiles: ['13800138000'],
-          isAtAll: false,
         },
       });
     });
@@ -230,12 +227,14 @@ describe('DingTalkStrategy (需求 12.4)', () => {
     });
 
     it('应该正确设置 @ 目标', () => {
-      const message: PushMessage = {
+      const message: PushMessage & { atMobiles: string[] } = {
         title: 'Test',
+        atMobiles: ['13900139000'],
       };
 
       const messageBody = (strategy as any).buildMessage(message, '13900139000');
 
+      expect(messageBody.at).toBeDefined();
       expect(messageBody.at.atMobiles).toEqual(['13900139000']);
       expect(messageBody.at.isAtAll).toBe(false);
     });

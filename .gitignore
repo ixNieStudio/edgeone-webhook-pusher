@@ -49,3 +49,5 @@ shared/internal-key.json
 .amazonq/
 .github/copilot/
 .kittify/.dashboard
+.kittify/workspaces/
+edge-functions/
