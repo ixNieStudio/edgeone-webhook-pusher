@@ -1,0 +1,2641 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Webhook Pusher API",
+    "version": "2.0.0",
+    "description": "Webhook Pusher 是一个基于 EdgeOne 的消息推送服务，支持通过 Webhook 发送微信公众号消息。\n\n## 架构概述\n\n系统采用三层架构：\n- **Channel（渠道）**: 消息发送通道配置，如微信公众号\n- **App（应用）**: 业务应用，关联渠道并定义推送模式\n- **OpenID**: 应用下绑定的微信用户\n\n## 认证方式\n\n管理 API 需要在请求头中携带 Admin Token：\n```\nAuthorization: Bearer <admin_token>\n```\n或\n```\nX-Admin-Token: <admin_token>\n```\n\n## Webhook 调用\n\nWebhook API 无需认证，通过 App Key 标识应用：\n```\nGET /{appKey}.send?title=消息标题&desp=消息内容\nPOST /{appKey}.send\n```",
+    "contact": {
+      "name": "ixNieStudio",
+      "email": "colin@ixnie.cn"
+    },
+    "license": {
+      "name": "GPL-3.0",
+      "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+    }
+  },
+  "servers": [
+    {
+      "url": "/v1",
+      "description": "API v1"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Webhook",
+      "description": "Webhook 推送"
+    },
+    {
+      "name": "Init",
+      "description": "系统初始化"
+    },
+    {
+      "name": "Auth",
+      "description": "认证"
+    },
+    {
+      "name": "Config",
+      "description": "系统配置"
+    },
+    {
+      "name": "Channels",
+      "description": "渠道管理"
+    },
+    {
+      "name": "Apps",
+      "description": "应用管理"
+    },
+    {
+      "name": "OpenIDs",
+      "description": "OpenID 管理"
+    },
+    {
+      "name": "Messages",
+      "description": "消息历史"
+    },
+    {
+      "name": "Stats",
+      "description": "统计数据"
+    }
+  ],
+  "paths": {
+    "/apps/": {
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "获取所有应用",
+        "operationId": "getApps",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "OpenID 数量",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "创建新应用",
+        "operationId": "postApps",
+        "responses": {
+          "200": {
+            "description": "创建的应用信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "创建一个新的业务应用，需要关联已存在的渠道",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "获取应用详情",
+        "operationId": "getAppsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "ID 获取单个应用的详细信息，包含 OpenID 数量",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "更新应用信息",
+        "operationId": "putAppsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "更新指定应用的配置信息",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAppInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Apps"
+        ],
+        "summary": "删除应用",
+        "operationId": "deleteAppsByid",
+        "responses": {
+          "204": {
+            "description": "删除成功"
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/auth/validate": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Admin Token",
+        "operationId": "postAuthValidate",
+        "responses": {
+          "200": {
+            "description": "验证结果"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Admin Token 是否有效",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}/bindcode/": {
+      "parameters": [
+        {
+          "name": "appId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 ID"
+        }
+      ],
+      "post": {
+        "tags": [
+          "BindCode"
+        ],
+        "summary": "生成绑定码",
+        "operationId": "postAppsByappIdBindcode",
+        "responses": {
+          "200": {
+            "description": "绑定码信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "5 分钟。如果是认证服务号，还会生成二维码。",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}/bindcode/{code}": {
+      "parameters": [
+        {
+          "name": "appId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 ID"
+        },
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "code parameter"
+        }
+      ],
+      "get": {
+        "tags": [
+          "BindCode"
+        ],
+        "summary": "查询绑定码状态",
+        "operationId": "getAppsByappIdBindcodeBycode",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/App"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "查询指定绑定码的当前状态（等待绑定/已绑定/已过期）",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/channels/": {
+      "get": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "获取所有渠道",
+        "operationId": "getChannels",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "返回系统中配置的所有渠道列表，敏感信息已脱敏",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "创建新渠道",
+        "operationId": "postChannels",
+        "responses": {
+          "200": {
+            "description": "创建的渠道信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "创建一个新的消息发送渠道",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChannelInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/channels/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "获取渠道详情",
+        "operationId": "getChannelsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "ID 获取单个渠道的详细信息",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "更新渠道信息",
+        "operationId": "putChannelsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "更新指定渠道的配置信息",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChannelInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "删除渠道",
+        "operationId": "deleteChannelsByid",
+        "responses": {
+          "204": {
+            "description": "删除成功"
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "删除指定的渠道。如果有应用引用此渠道，将无法删除",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/verify": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "验证渠道配置",
+        "operationId": "getChannelsByidVerify",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "Access Token 来验证",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/channels/{id}/token-status": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Channels"
+        ],
+        "summary": "Token 状态",
+        "operationId": "getChannelsByidToken-status",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Channel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "Access Token 的维护状态，包括最后刷新时间、是否成功、过期时间等",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/config/": {
+      "get": {
+        "tags": [
+          "Config"
+        ],
+        "summary": "获取系统配置",
+        "operationId": "getConfig",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "获取当前系统配置，敏感信息已脱敏",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Config"
+        ],
+        "summary": "更新系统配置",
+        "operationId": "putConfig",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SystemConfig"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "更新系统配置，如速率限制、数据保留策略等",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/reset-token": {
+      "post": {
+        "tags": [
+          "Config"
+        ],
+        "summary": "重置管理员令牌",
+        "operationId": "postConfigReset-token",
+        "responses": {
+          "200": {
+            "description": "- 重置成功"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ResetTokenResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "- 密码验证失败"
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "**自定义密码要求：** - 长度至少 12 个字符 - 包含至少一个大写字母 (A-Z) - 包含至少一个小写字母 (a-z) - 包含至少一个数字 (0-9) - 包含至少一个特殊字符 (!@#$%^&*()_+-=[]{}|;:,.<>?) **使用方式：** - 不提供参数：自动生成随机令牌（向后兼容） - 提供 newPassword 和 confirmPassword：使用自定义密码",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetTokenRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/apps/": {
+      "get": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "获取所有体验应用",
+        "operationId": "getDemoApps",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "返回所有标记为体验的应用列表"
+      },
+      "post": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "创建新的体验应用",
+        "operationId": "postDemoApps",
+        "responses": {
+          "200": {
+            "description": "创建的体验应用信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "创建一个新的体验应用，自动使用固定模板和第一个渠道",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/apps/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "获取体验应用详情",
+        "operationId": "getDemoAppsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "ID 获取单个体验应用的详细信息"
+      },
+      "delete": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "删除体验应用",
+        "operationId": "deleteDemoAppsByid",
+        "responses": {
+          "204": {
+            "description": "删除成功"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID"
+      }
+    },
+    "/demo/apps/{id}/bindcode": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "post": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "为体验应用生成绑定码",
+        "operationId": "postDemoAppsByidBindcode",
+        "responses": {
+          "200": {
+            "description": "URL，如果可用）"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "6 位数字绑定码，用于用户绑定微信。如果渠道支持，还会生成二维码",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/demo/apps/{id}/bindcode/{code}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        },
+        {
+          "name": "code",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "code parameter"
+        }
+      ],
+      "get": {
+        "tags": [
+          "DemoApps"
+        ],
+        "summary": "查询绑定码状态",
+        "operationId": "getDemoAppsByidBindcodeBycode",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "查询指定绑定码的状态（pending/bound/expired）"
+      }
+    },
+    "/init/status": {
+      "get": {
+        "tags": [
+          "Init"
+        ],
+        "summary": "检查初始化状态",
+        "operationId": "getInitStatus",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "检查系统是否已完成初始化"
+      }
+    },
+    "/init/": {
+      "post": {
+        "tags": [
+          "Init"
+        ],
+        "summary": "初始化系统",
+        "operationId": "postInit",
+        "responses": {
+          "200": {
+            "description": "Admin Token"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "Admin Token。此操作只能执行一次",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/messages/": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "获取消息历史",
+        "operationId": "getMessages",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "分页获取消息历史记录，支持按渠道、应用、用户、方向和日期筛选",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/messages/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "获取消息详情",
+        "operationId": "getMessagesByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Message"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "ID 获取单条消息的详细信息，包含发送结果",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/apps/{appId}/openids/": {
+      "parameters": [
+        {
+          "name": "appId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "OpenIDs"
+        ],
+        "summary": "OpenID 列表",
+        "operationId": "getAppsByappIdOpenids",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OpenID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "OpenIDs"
+        ],
+        "summary": "OpenID",
+        "operationId": "postAppsByappIdOpenids",
+        "responses": {
+          "200": {
+            "description": "OpenID 信息"
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OpenID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOpenIDInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/apps/{appId}/openids/{id}": {
+      "parameters": [
+        {
+          "name": "appId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 ID"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "Resource ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "OpenIDs"
+        ],
+        "summary": "OpenID 详情",
+        "operationId": "getAppsByappIdOpenidsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OpenID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "ID 获取单个 OpenID 的详细信息",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "OpenIDs"
+        ],
+        "summary": "OpenID 信息",
+        "operationId": "putAppsByappIdOpenidsByid",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OpenID"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID 的备注等信息",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOpenIDInput"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "OpenIDs"
+        ],
+        "summary": "OpenID",
+        "operationId": "deleteAppsByappIdOpenidsByid",
+        "responses": {
+          "204": {
+            "description": "删除成功"
+          },
+          "401": {
+            "description": "未授权"
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "description": "OpenID",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/stats/": {
+      "get": {
+        "tags": [
+          "Stats"
+        ],
+        "summary": "获取系统统计数据",
+        "operationId": "getStats",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "未授权"
+          }
+        },
+        "description": "数和消息数",
+        "security": [
+          {
+            "BearerAuth": []
+          },
+          {
+            "AdminToken": []
+          }
+        ]
+      }
+    },
+    "/wechat": {
+      "get": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "GET /wechat - 微信服务器验证（无渠道 ID，使用空 token）",
+        "operationId": "getWechat",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "POST /wechat - 处理微信消息和事件（无渠道 ID）",
+        "operationId": "postWechat",
+        "responses": {
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wechat/{channelId}": {
+      "parameters": [
+        {
+          "name": "channelId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "渠道 ID"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "GET /wechat/:channelId - 微信服务器验证（带渠道 ID）",
+        "operationId": "getWechatBychannelId",
+        "responses": {
+          "200": {
+            "description": "成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "POST /wechat/:channelId - 处理微信消息和事件（带渠道 ID）",
+        "operationId": "postWechatBychannelId",
+        "responses": {
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "success"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "资源不存在"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{appKey}.send": {
+      "parameters": [
+        {
+          "name": "appKey",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          },
+          "description": "应用 Key (APK...)"
+        }
+      ],
+      "get": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "发送消息 (GET)",
+        "description": "通过 URL 参数发送消息",
+        "operationId": "sendMessageGet",
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "消息标题"
+          },
+          {
+            "name": "desp",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "消息内容"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "发送成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PushResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误"
+          },
+          "404": {
+            "description": "应用不存在"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhook"
+        ],
+        "summary": "发送消息 (POST)",
+        "description": "通过 JSON Body 发送消息",
+        "operationId": "sendMessagePost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushMessageInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "发送成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "integer",
+                      "example": 0
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PushResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "参数错误"
+          },
+          "404": {
+            "description": "应用不存在"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Channel": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChannelType"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ChannelConfig"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "config",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "CreateChannelInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ChannelType"
+          },
+          "config": {
+            "$ref": "#/components/schemas/ChannelConfig"
+          }
+        },
+        "required": [
+          "name",
+          "config"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateChannelInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "properties": {
+              "appId": {
+                "type": "string"
+              },
+              "appSecret": {
+                "type": "string"
+              },
+              "msgToken": {
+                "type": "string"
+              },
+              "corpId": {
+                "type": "string"
+              },
+              "agentId": {
+                "type": "number"
+              },
+              "corpSecret": {
+                "type": "string"
+              },
+              "webhookUrl": {
+                "type": "string"
+              },
+              "secret": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "App": {},
+      "CreateAppInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "pushMode": {
+            "$ref": "#/components/schemas/PushMode"
+          },
+          "messageType": {
+            "$ref": "#/components/schemas/MessageType"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "webhookUrl": {
+            "type": "string"
+          },
+          "atMobiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "atAll": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "channelId"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateAppInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string"
+          },
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departmentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "webhookUrl": {
+            "type": "string"
+          },
+          "atMobiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "atAll": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OpenID": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "openId": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "appId",
+          "openId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "OpenID 订阅者相关类型定义",
+        "additionalProperties": false
+      },
+      "CreateOpenIDInput": {
+        "type": "object",
+        "properties": {
+          "openId": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "openId"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateOpenIDInput": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "remark": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/MessageDirection"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MessageRecordType"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "appId": {
+            "type": "string"
+          },
+          "appName": {
+            "type": "string"
+          },
+          "openId": {
+            "type": "string"
+          },
+          "userNickname": {
+            "type": "string"
+          },
+          "userAvatar": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "desp": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryResult"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "direction",
+          "type",
+          "channelId",
+          "title",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "PushMessageInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "desp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "PushResult": {
+        "type": "object",
+        "properties": {
+          "pushId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number"
+          },
+          "success": {
+            "type": "number"
+          },
+          "failed": {
+            "type": "number"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeliveryResult"
+            }
+          }
+        },
+        "required": [
+          "pushId",
+          "total",
+          "success",
+          "failed"
+        ],
+        "additionalProperties": false
+      },
+      "SystemConfig": {
+        "type": "object",
+        "properties": {
+          "adminToken": {
+            "type": "string"
+          },
+          "rateLimit": {
+            "type": "object",
+            "properties": {
+              "perMinute": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "perMinute"
+            ],
+            "additionalProperties": false
+          },
+          "retention": {
+            "type": "object",
+            "properties": {
+              "days": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "days"
+            ],
+            "additionalProperties": false
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "adminToken",
+          "createdAt",
+          "updatedAt"
+        ],
+        "description": "System 系统配置相关类型定义",
+        "additionalProperties": false
+      },
+      "PushMode": {
+        "type": "string",
+        "enum": [
+          "single",
+          "subscribe"
+        ],
+        "description": "推送模式"
+      },
+      "MessageType": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "template"
+        ],
+        "description": "消息类型"
+      },
+      "ChannelType": {
+        "type": "string",
+        "enum": [
+          "wechat",
+          "work_wechat",
+          "dingtalk",
+          "feishu"
+        ],
+        "description": "渠道类型"
+      },
+      "WeChatConfig": {
+        "type": "object",
+        "required": [
+          "appId",
+          "appSecret"
+        ],
+        "properties": {
+          "appId": {
+            "type": "string",
+            "description": "微信公众号 AppID"
+          },
+          "appSecret": {
+            "type": "string",
+            "description": "微信公众号 AppSecret"
+          }
+        }
+      },
+      "DeliveryResult": {
+        "type": "object",
+        "properties": {
+          "openId": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "msgId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ResetTokenRequest": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "description": "自定义密码（可选）。需符合复杂度要求：至少12个字符，包含大小写字母、数字和特殊字符",
+            "example": "MySecurePass123!"
+          },
+          "confirmPassword": {
+            "type": "string",
+            "description": "确认密码（使用自定义密码时必填）",
+            "example": "MySecurePass123!"
+          }
+        }
+      },
+      "ResetTokenResult": {
+        "type": "object",
+        "properties": {
+          "adminToken": {
+            "type": "string",
+            "description": "新的管理员令牌",
+            "example": "AT_MySecurePass123!"
+          },
+          "message": {
+            "type": "string",
+            "description": "提示信息",
+            "example": "管理员密码已重置为自定义密码。请妥善保管新密码，旧令牌已失效。"
+          },
+          "isCustomPassword": {
+            "type": "boolean",
+            "description": "是否使用自定义密码",
+            "example": true
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "错误码"
+          },
+          "message": {
+            "type": "string",
+            "description": "错误信息"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "Success": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Admin Token 认证"
+      },
+      "AdminToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Admin-Token",
+        "description": "Admin Token (alternative)"
+      }
+    }
+  }
+}
