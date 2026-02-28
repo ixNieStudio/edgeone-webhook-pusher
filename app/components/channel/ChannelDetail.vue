@@ -59,13 +59,14 @@
       </div>
     </div>
 
-    <!-- WeChat Config Card -->
+    <!-- Config Card -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
       <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-        <span class="font-medium">微信配置</span>
+        <span class="font-medium">渠道配置</span>
       </div>
       <div class="p-4">
-        <dl class="space-y-4">
+        <!-- WeChat Config -->
+        <dl v-if="channel.type === 'wechat'" class="space-y-4">
           <div class="flex justify-between">
             <dt class="text-gray-500 dark:text-gray-400">AppID</dt>
             <dd class="flex items-center gap-2">
@@ -82,11 +83,59 @@
             </dd>
           </div>
         </dl>
+        <!-- WorkWeChat Config -->
+        <dl v-else-if="channel.type === 'work_wechat'" class="space-y-4">
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">企业 ID</dt>
+            <dd class="flex items-center gap-2">
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.config?.corpId || '-' }}</code>
+              <button v-if="channel.config?.corpId" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="copyToClipboard(channel.config.corpId, '企业 ID')">
+                <Icon icon="heroicons:clipboard" class="text-base" />
+              </button>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">应用 ID</dt>
+            <dd>
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.config?.agentId || '-' }}</code>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">应用密钥</dt>
+            <dd>
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ maskSecret(channel.config?.corpSecret) }}</code>
+            </dd>
+          </div>
+        </dl>
+        <!-- Webhook Config (DingTalk & Feishu) -->
+        <dl v-else-if="channel.type === 'dingtalk' || channel.type === 'feishu'" class="space-y-4">
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">Webhook URL</dt>
+            <dd class="flex items-center gap-2">
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded max-w-xs truncate">{{ channel.config?.webhookUrl || '-' }}</code>
+              <button v-if="channel.config?.webhookUrl" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-800" @click="copyToClipboard(channel.config.webhookUrl, 'Webhook URL')">
+                <Icon icon="heroicons:clipboard" class="text-base" />
+              </button>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">签名密钥</dt>
+            <dd>
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.config?.secret ? maskSecret(channel.config.secret) : '未配置' }}</code>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-gray-500 dark:text-gray-400">签名算法</dt>
+            <dd>
+              <code class="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{{ channel.type === 'dingtalk' ? 'HMAC-SHA256' : 'SHA-256' }}</code>
+            </dd>
+          </div>
+        </dl>
       </div>
     </div>
 
-    <!-- Token Status Card -->
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+    <!-- Token Status Card (only for token-managed channels) -->
+    <div v-if="channel.type === 'wechat' || channel.type === 'work_wechat'" class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
       <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
         <span class="font-medium">Token 维护状态</span>
         <button
@@ -159,18 +208,39 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">渠道名称</label>
                 <input v-model="editForm.name" placeholder="请输入渠道名称" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
               </div>
-              <div>
+              <!-- Dynamic fields based on channel type -->
+              <div v-if="channel.type === 'wechat'">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppID</label>
                 <input v-model="editForm.appId" :placeholder="channel.config?.appId || '微信公众号 AppID'" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
               </div>
-              <div>
+              <div v-if="channel.type === 'wechat'">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppSecret</label>
                 <input v-model="editForm.appSecret" type="password" placeholder="留空则不修改" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
               </div>
-              <div>
+              <div v-if="channel.type === 'wechat'">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">消息 Token</label>
                 <input v-model="editForm.msgToken" :placeholder="channel.config?.msgToken || '微信服务器配置中的 Token'" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
                 <p class="text-xs text-gray-400 mt-1">用于验证微信消息回调，需与公众号后台配置一致</p>
+              </div>
+              <div v-if="channel.type === 'work_wechat'">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">企业 ID</label>
+                <input v-model="editForm.corpId" :placeholder="channel.config?.corpId || '企业微信 Corp ID'" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div v-if="channel.type === 'work_wechat'">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">应用 ID</label>
+                <input v-model="editForm.agentId" type="number" :placeholder="channel.config?.agentId?.toString() || '企业微信应用 Agent ID'" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div v-if="channel.type === 'work_wechat'">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">应用密钥</label>
+                <input v-model="editForm.corpSecret" type="password" placeholder="留空则不修改" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div v-if="channel.type === 'dingtalk' || channel.type === 'feishu'">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Webhook URL</label>
+                <input v-model="editForm.webhookUrl" :placeholder="channel.config?.webhookUrl || '群机器人 Webhook 地址'" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+              </div>
+              <div v-if="channel.type === 'dingtalk' || channel.type === 'feishu'">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">签名密钥（可选）</label>
+                <input v-model="editForm.secret" type="password" placeholder="留空则不修改" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
               </div>
             </div>
           </div>
@@ -210,9 +280,17 @@ const showEditModal = ref(false);
 const saving = ref(false);
 const editForm = ref({
   name: '',
+  // WeChat fields
   appId: '',
   appSecret: '',
   msgToken: '',
+  // WorkWeChat fields
+  corpId: '',
+  agentId: undefined as number | undefined,
+  corpSecret: '',
+  // Webhook fields
+  webhookUrl: '',
+  secret: '',
 });
 
 // Token status
@@ -244,9 +322,17 @@ watch(() => props.channel.id, () => {
 watch(() => props.channel, (ch) => {
   editForm.value = {
     name: ch.name,
+    // WeChat fields
     appId: ch.config?.appId || '',
     appSecret: '',
     msgToken: ch.config?.msgToken || '',
+    // WorkWeChat fields
+    corpId: ch.config?.corpId || '',
+    agentId: ch.config?.agentId,
+    corpSecret: '',
+    // Webhook fields
+    webhookUrl: ch.config?.webhookUrl || '',
+    secret: '',
   };
 }, { immediate: true });
 
@@ -275,13 +361,30 @@ async function handleUpdate() {
     const updateData: UpdateChannelInput = {
       name: editForm.value.name.trim(),
     };
-    // 只要有任何配置字段变更，就更新 config
-    if (editForm.value.appId.trim() || editForm.value.appSecret.trim() || editForm.value.msgToken.trim()) {
-      updateData.config = {
-        appId: editForm.value.appId.trim() || props.channel.config?.appId,
-        appSecret: editForm.value.appSecret.trim() || props.channel.config?.appSecret,
-        msgToken: editForm.value.msgToken.trim() || props.channel.config?.msgToken,
-      };
+    // Build config based on channel type
+    if (props.channel.type === 'wechat') {
+      if (editForm.value.appId.trim() || editForm.value.appSecret.trim() || editForm.value.msgToken.trim()) {
+        updateData.config = {
+          appId: editForm.value.appId.trim() || props.channel.config?.appId,
+          appSecret: editForm.value.appSecret.trim() || props.channel.config?.appSecret,
+          msgToken: editForm.value.msgToken.trim() || props.channel.config?.msgToken,
+        };
+      }
+    } else if (props.channel.type === 'work_wechat') {
+      if (editForm.value.corpId.trim() || editForm.value.agentId || editForm.value.corpSecret.trim()) {
+        updateData.config = {
+          corpId: editForm.value.corpId.trim() || props.channel.config?.corpId,
+          agentId: editForm.value.agentId || props.channel.config?.agentId,
+          corpSecret: editForm.value.corpSecret.trim() || props.channel.config?.corpSecret,
+        };
+      }
+    } else if (props.channel.type === 'dingtalk' || props.channel.type === 'feishu') {
+      if (editForm.value.webhookUrl.trim() || editForm.value.secret.trim()) {
+        updateData.config = {
+          webhookUrl: editForm.value.webhookUrl.trim() || props.channel.config?.webhookUrl,
+          secret: editForm.value.secret.trim() || props.channel.config?.secret,
+        };
+      }
     }
     await api.updateChannel(props.channel.id, updateData);
     toast.add({ title: '更新成功', color: 'success' });

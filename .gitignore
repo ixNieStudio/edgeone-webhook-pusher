@@ -53,3 +53,4 @@ shared/internal-key.json
 .edgeone/
 edge-functions/
 .omc/
+.sisyphus/

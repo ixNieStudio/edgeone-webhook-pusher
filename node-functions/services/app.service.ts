@@ -95,10 +95,8 @@ class AppService {
       
       case 'dingtalk':
       case 'feishu': {
-        // Webhook 渠道：需要 webhookUrl
-        if (!data.webhookUrl) {
-          throw ApiError.badRequest(`webhookUrl is required for ${channelType} channel`);
-        }
+        // Webhook 渠道：不需要额外验证，使用渠道的 webhookUrl
+        // 可选字段：atMobiles, atAll（钉钉专用）
         break;
       }
       
@@ -153,7 +151,6 @@ class AppService {
         return {
           ...baseConfig,
           channelType: 'dingtalk',
-          webhookUrl: data.webhookUrl!,
           ...(data.atMobiles && { atMobiles: data.atMobiles }),
           ...(data.atAll !== undefined && { atAll: data.atAll }),
         };
@@ -163,7 +160,6 @@ class AppService {
         return {
           ...baseConfig,
           channelType: 'feishu',
-          webhookUrl: data.webhookUrl!,
         };
       }
       
@@ -312,14 +308,6 @@ class AppService {
       case 'dingtalk': {
         const dingtalkApp = app as WebhookAppConfig;
         
-        // 更新 webhookUrl
-        if (data.webhookUrl !== undefined) {
-          if (!data.webhookUrl) {
-            throw ApiError.badRequest('webhookUrl cannot be empty for DingTalk channel');
-          }
-          dingtalkApp.webhookUrl = data.webhookUrl;
-        }
-        
         // 更新 atMobiles
         if (data.atMobiles !== undefined) {
           dingtalkApp.atMobiles = data.atMobiles;
@@ -333,15 +321,7 @@ class AppService {
       }
       
       case 'feishu': {
-        const feishuApp = app as WebhookAppConfig;
-        
-        // 更新 webhookUrl
-        if (data.webhookUrl !== undefined) {
-          if (!data.webhookUrl) {
-            throw ApiError.badRequest('webhookUrl cannot be empty for Feishu channel');
-          }
-          feishuApp.webhookUrl = data.webhookUrl;
-        }
+        // 飞书应用没有额外的可更新字段
         break;
       }
     }

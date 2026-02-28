@@ -32,10 +32,9 @@ export interface WorkWeChatAppConfig extends BaseApp {
   messageType: 'text' | 'template_card'; // 消息类型
 }
 
-// Webhook 应用配置
+// Webhook 应用配置（钉钉/飞书）
 export interface WebhookAppConfig extends BaseApp {
   channelType: 'dingtalk' | 'feishu';
-  webhookUrl: string;      // Webhook URL（从渠道继承或覆盖）
   atMobiles?: string[];    // @的手机号列表（钉钉）
   atAll?: boolean;         // 是否@所有人
 }
@@ -51,7 +50,6 @@ export interface CreateAppInput {
   templateId?: string;
   userIds?: string[];
   departmentIds?: string[];
-  webhookUrl?: string;
   atMobiles?: string[];
   atAll?: boolean;
 }
@@ -61,7 +59,6 @@ export interface UpdateAppInput {
   templateId?: string;
   userIds?: string[];
   departmentIds?: string[];
-  webhookUrl?: string;
   atMobiles?: string[];
   atAll?: boolean;
 }

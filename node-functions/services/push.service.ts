@@ -173,12 +173,9 @@ class PushService {
 
       case 'dingtalk':
       case 'feishu': {
-        // Webhook 渠道：使用 Webhook URL 作为目标
-        if (!isWebhookApp(app)) {
-          return [];
-        }
-
-        return [app.webhookUrl];
+        // Webhook 渠道：使用渠道的 Webhook URL 作为目标
+        // 返回一个占位符，实际 URL 从 channel.config 获取
+        return ['webhook'];
       }
 
       default:

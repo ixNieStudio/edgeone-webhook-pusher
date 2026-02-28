@@ -127,22 +127,71 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">渠道类型</label>
-                <select disabled class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed">
+                <select v-model="createForm.type" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
                   <option value="wechat">微信公众号</option>
+                  <option value="work_wechat">企业微信</option>
+                  <option value="dingtalk">钉钉群机器人</option>
+                  <option value="feishu">飞书群机器人</option>
                 </select>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppID</label>
-                <input v-model="createForm.config.appId" placeholder="微信公众号 AppID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppSecret</label>
-                <input v-model="createForm.config.appSecret" type="password" placeholder="微信公众号 AppSecret" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
-              </div>
+              <!-- WeChat Fields -->
+              <template v-if="createForm.type === 'wechat'">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppID</label>
+                  <input v-model="createForm.config.appId" placeholder="微信公众号 AppID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">AppSecret</label>
+                  <input v-model="createForm.config.appSecret" type="password" placeholder="微信公众号 AppSecret" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+              </template>
+
+              <!-- Work WeChat Fields -->
+              <template v-else-if="createForm.type === 'work_wechat'">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">企业 ID</label>
+                  <input v-model="createForm.config.corpId" placeholder="企业微信 Corp ID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">应用 ID</label>
+                  <input v-model="createForm.config.agentId" type="number" placeholder="企业微信应用 Agent ID" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">应用密钥</label>
+                  <input v-model="createForm.config.corpSecret" type="password" placeholder="企业微信应用 Secret" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+              </template>
+
+              <!-- DingTalk Fields -->
+              <template v-else-if="createForm.type === 'dingtalk'">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Webhook URL</label>
+                  <input v-model="createForm.config.webhookUrl" placeholder="钉钉群机器人 Webhook URL" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">密钥（可选）</label>
+                  <input v-model="createForm.config.secret" type="password" placeholder="钉钉机器人加签密钥" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">如果启用了加签验证，请填写密钥</p>
+                </div>
+              </template>
+
+              <!-- Feishu Fields -->
+              <template v-else-if="createForm.type === 'feishu'">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Webhook URL</label>
+                  <input v-model="createForm.config.webhookUrl" placeholder="飞书群机器人 Webhook URL" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">密钥（可选）</label>
+                  <input v-model="createForm.config.secret" type="password" placeholder="飞书机器人签名密钥" class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none" />
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">如果启用了签名验证，请填写密钥</p>
+                </div>
+              </template>
+
               <div class="p-4 rounded-lg border bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300">
                 <div class="flex items-start gap-3">
                   <Icon icon="heroicons:information-circle" class="text-xl shrink-0 mt-0.5" />
-                  <p class="text-sm">渠道用于配置消息发送通道，创建后可在应用中引用</p>
+                  <p class="text-sm">{{ getChannelTypeDescription(createForm.type) }}</p>
                 </div>
               </div>
             </div>
@@ -264,13 +313,35 @@ async function handleCreate() {
     toast.add({ title: '请输入渠道名称', color: 'warning' });
     return;
   }
-  if (!createForm.value.config.appId?.trim()) {
-    toast.add({ title: '请输入 AppID', color: 'warning' });
-    return;
-  }
-  if (!createForm.value.config.appSecret?.trim()) {
-    toast.add({ title: '请输入 AppSecret', color: 'warning' });
-    return;
+  
+  // Validate based on channel type
+  if (createForm.value.type === 'wechat') {
+    if (!createForm.value.config.appId?.trim()) {
+      toast.add({ title: '请输入 AppID', color: 'warning' });
+      return;
+    }
+    if (!createForm.value.config.appSecret?.trim()) {
+      toast.add({ title: '请输入 AppSecret', color: 'warning' });
+      return;
+    }
+  } else if (createForm.value.type === 'work_wechat') {
+    if (!createForm.value.config.corpId?.trim()) {
+      toast.add({ title: '请输入企业 ID', color: 'warning' });
+      return;
+    }
+    if (!createForm.value.config.agentId) {
+      toast.add({ title: '请输入应用 ID', color: 'warning' });
+      return;
+    }
+    if (!createForm.value.config.corpSecret?.trim()) {
+      toast.add({ title: '请输入应用密钥', color: 'warning' });
+      return;
+    }
+  } else if (createForm.value.type === 'dingtalk' || createForm.value.type === 'feishu') {
+    if (!createForm.value.config.webhookUrl?.trim()) {
+      toast.add({ title: '请输入 Webhook URL', color: 'warning' });
+      return;
+    }
   }
   
   creating.value = true;
@@ -304,5 +375,20 @@ function resetCreateForm() {
       appSecret: '',
     },
   };
+}
+
+function getChannelTypeDescription(type: string): string {
+  switch (type) {
+    case 'wechat':
+      return '微信公众号渠道用于配置微信消息发送通道，支持客服消息和模板消息';
+    case 'work_wechat':
+      return '企业微信渠道用于向企业内部成员发送应用消息';
+    case 'dingtalk':
+      return '钉钉群机器人通过 Webhook 向钉钉群发送消息，支持 @mentions 功能';
+    case 'feishu':
+      return '飞书群机器人通过 Webhook 向飞书群发送消息';
+    default:
+      return '渠道用于配置消息发送通道，创建后可在应用中引用';
+  }
 }
 </script>

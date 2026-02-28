@@ -75,6 +75,13 @@ export default defineNuxtConfig({
     configPath: 'tailwind.config.ts',
   },
 
+  // 组件自动导入配置
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false, // 不添加目录前缀，保持组件名称扁平化
+    },
+  ],
   router: {
     options: {
       linkActiveClass: 'active',

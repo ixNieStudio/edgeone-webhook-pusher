@@ -280,64 +280,33 @@ describe('AppService - Dynamic Configuration', () => {
 
     it('应该成功创建钉钉应用', async () => {
       mockChannelsKV.get.mockResolvedValue(dingtalkChannel);
-
       const input: CreateAppInput = {
         name: '测试钉钉应用',
         channelId: dingtalkChannel.id,
-        webhookUrl: 'https://oapi.dingtalk.com/robot/send?access_token=custom',
         atMobiles: ['13800138000'],
         atAll: false,
       };
-
       const app = await appService.create(input);
-
       expect(app).toMatchObject({
         channelType: 'dingtalk',
-        webhookUrl: 'https://oapi.dingtalk.com/robot/send?access_token=custom',
         atMobiles: ['13800138000'],
         atAll: false,
       });
+      expect(app).not.toHaveProperty('webhookUrl');
       expect(app).not.toHaveProperty('pushMode');
       expect(app).not.toHaveProperty('userIds');
     });
-
     it('应该成功创建飞书应用', async () => {
       mockChannelsKV.get.mockResolvedValue(feishuChannel);
-
       const input: CreateAppInput = {
         name: '测试飞书应用',
         channelId: feishuChannel.id,
-        webhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/custom',
       };
-
       const app = await appService.create(input);
-
       expect(app).toMatchObject({
         channelType: 'feishu',
-        webhookUrl: 'https://open.feishu.cn/open-apis/bot/v2/hook/custom',
       });
-    });
-
-    it('应该拒绝缺少 webhookUrl 的钉钉应用', async () => {
-      mockChannelsKV.get.mockResolvedValue(dingtalkChannel);
-
-      const input: CreateAppInput = {
-        name: '测试钉钉应用',
-        channelId: dingtalkChannel.id,
-      };
-
-      await expect(appService.create(input)).rejects.toThrow('webhookUrl is required for dingtalk channel');
-    });
-
-    it('应该拒绝缺少 webhookUrl 的飞书应用', async () => {
-      mockChannelsKV.get.mockResolvedValue(feishuChannel);
-
-      const input: CreateAppInput = {
-        name: '测试飞书应用',
-        channelId: feishuChannel.id,
-      };
-
-      await expect(appService.create(input)).rejects.toThrow('webhookUrl is required for feishu channel');
+      expect(app).not.toHaveProperty('webhookUrl');
     });
   });
 
@@ -504,14 +473,13 @@ describe('AppService - Dynamic Configuration', () => {
       );
     });
 
-    it('应该成功更新钉钉应用的 webhookUrl', async () => {
+    it('应该成功更新钉钉应用的 atMobiles', async () => {
       const existingApp: WebhookAppConfig = {
         id: 'app_1',
         key: 'key_1',
         name: '测试应用',
         channelId: 'ch_1',
         channelType: 'dingtalk',
-        webhookUrl: 'https://old.url',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
@@ -520,25 +488,24 @@ describe('AppService - Dynamic Configuration', () => {
       mockAppsKV.get.mockResolvedValue(existingApp);
 
       const update: UpdateAppInput = {
-        webhookUrl: 'https://new.url',
+        atMobiles: ['13800138000'],
       };
 
       const updated = await appService.update('app_1', update);
 
       expect(updated.channelType).toBe('dingtalk');
-      if (updated.channelType === 'dingtalk' || updated.channelType === 'feishu') {
-        expect(updated.webhookUrl).toBe('https://new.url');
+      if (updated.channelType === 'dingtalk') {
+        expect(updated.atMobiles).toEqual(['13800138000']);
       }
     });
 
-    it('应该拒绝清空钉钉应用的 webhookUrl', async () => {
+    it('应该成功更新钉钉应用的 atAll', async () => {
       const existingApp: WebhookAppConfig = {
         id: 'app_1',
         key: 'key_1',
         name: '测试应用',
         channelId: 'ch_1',
         channelType: 'dingtalk',
-        webhookUrl: 'https://old.url',
         createdAt: '2024-01-01T00:00:00.000Z',
         updatedAt: '2024-01-01T00:00:00.000Z',
       };
@@ -547,13 +514,15 @@ describe('AppService - Dynamic Configuration', () => {
       mockAppsKV.get.mockResolvedValue(existingApp);
 
       const update: UpdateAppInput = {
-        webhookUrl: '',
+        atAll: true,
       };
 
-      await expect(appService.update('app_1', update)).rejects.toThrow(
-        'webhookUrl cannot be empty for DingTalk channel'
-      );
-    });
+      const updated = await appService.update('app_1', update);
+
+      expect(updated.channelType).toBe('dingtalk');
+      if (updated.channelType === 'dingtalk') {
+        expect(updated.atAll).toBe(true);
+      }
   });
 
   describe('通用验证', () => {

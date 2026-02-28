@@ -419,12 +419,13 @@ describe('AppService - Property-Based Tests', () => {
       );
     });
 
-    it('钉钉渠道应用必须包含 webhookUrl 字段', async () => {
+    it('钉钉渠道应用可以包含 atMobiles 和 atAll 字段', async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 50 }),
-          fc.option(fc.webUrl(), { nil: undefined }),
-          async (appName, webhookUrl) => {
+          fc.option(fc.array(fc.string(), { maxLength: 5 }), { nil: undefined }),
+          fc.option(fc.boolean(), { nil: undefined }),
+          async (appName, atMobiles, atAll) => {
             // 重置 mock
             mockAppsKV.get.mockReset();
             mockAppsKV.put.mockReset();
@@ -438,41 +439,33 @@ describe('AppService - Property-Based Tests', () => {
             };
             mockChannelsKV.get.mockResolvedValue(dingtalkChannel);
             mockAppsKV.get.mockResolvedValue(null);
-
-            // 测试缺少 webhookUrl 的情况
-            const inputWithoutWebhook: CreateAppInput = {
+            const input: CreateAppInput = {
               name: appName.trim() || 'Test App',
               channelId: dingtalkChannel.id,
+              ...(atMobiles && { atMobiles }),
+              ...(atAll !== undefined && { atAll }),
             };
-
-            // 应该抛出错误
-            await expect(appService.create(inputWithoutWebhook)).rejects.toThrow(/webhookUrl is required/i);
-
-            // 测试包含 webhookUrl 的情况
-            if (webhookUrl) {
-              const inputWithWebhook: CreateAppInput = {
-                ...inputWithoutWebhook,
-                webhookUrl,
-              };
-
-              // 应该成功创建
-              const app = await appService.create(inputWithWebhook);
-              expect(app).toBeDefined();
-              expect(app.channelType).toBe('dingtalk');
-              expect((app as WebhookAppConfig).webhookUrl).toBe(webhookUrl);
+            // 应该成功创建
+            const app = await appService.create(input);
+            expect(app).toBeDefined();
+            expect(app.channelType).toBe('dingtalk');
+            expect(app).not.toHaveProperty('webhookUrl');
+            if (atMobiles) {
+              expect((app as WebhookAppConfig).atMobiles).toEqual(atMobiles);
+            }
+            if (atAll !== undefined) {
+              expect((app as WebhookAppConfig).atAll).toBe(atAll);
             }
           }
         ),
         { numRuns: 100 }
       );
     });
-
-    it('飞书渠道应用必须包含 webhookUrl 字段', async () => {
+    it('飞书渠道应用不需要 webhookUrl 字段', async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 50 }),
-          fc.option(fc.webUrl(), { nil: undefined }),
-          async (appName, webhookUrl) => {
+          async (appName) => {
             // 重置 mock
             mockAppsKV.get.mockReset();
             mockAppsKV.put.mockReset();
@@ -486,29 +479,15 @@ describe('AppService - Property-Based Tests', () => {
             };
             mockChannelsKV.get.mockResolvedValue(feishuChannel);
             mockAppsKV.get.mockResolvedValue(null);
-
-            // 测试缺少 webhookUrl 的情况
-            const inputWithoutWebhook: CreateAppInput = {
+            const input: CreateAppInput = {
               name: appName.trim() || 'Test App',
               channelId: feishuChannel.id,
             };
-
-            // 应该抛出错误
-            await expect(appService.create(inputWithoutWebhook)).rejects.toThrow(/webhookUrl is required/i);
-
-            // 测试包含 webhookUrl 的情况
-            if (webhookUrl) {
-              const inputWithWebhook: CreateAppInput = {
-                ...inputWithoutWebhook,
-                webhookUrl,
-              };
-
-              // 应该成功创建
-              const app = await appService.create(inputWithWebhook);
-              expect(app).toBeDefined();
-              expect(app.channelType).toBe('feishu');
-              expect((app as WebhookAppConfig).webhookUrl).toBe(webhookUrl);
-            }
+            // 应该成功创建
+            const app = await appService.create(input);
+            expect(app).toBeDefined();
+            expect(app.channelType).toBe('feishu');
+            expect(app).not.toHaveProperty('webhookUrl');
           }
         ),
         { numRuns: 100 }
@@ -576,9 +555,10 @@ describe('AppService - Property-Based Tests', () => {
               channelId: channel.id,
             };
 
-            // 所有渠道类型都应该拒绝不完整的配置
-            await expect(appService.create(incompleteInput)).rejects.toThrow();
-
+            // 所有渠道类型都应该拒绝不完整的配置（除了 webhook 渠道）
+            if (channelType === 'wechat' || channelType === 'work_wechat') {
+              await expect(appService.create(incompleteInput)).rejects.toThrow();
+            }
             // 创建包含必需字段的输入
             let completeInput: CreateAppInput;
             switch (channelType) {
@@ -597,10 +577,8 @@ describe('AppService - Property-Based Tests', () => {
                 break;
               case 'dingtalk':
               case 'feishu':
-                completeInput = {
-                  ...incompleteInput,
-                  webhookUrl: 'https://example.com/webhook',
-                };
+                // Webhook 渠道不需要额外字段
+                completeInput = incompleteInput;
                 break;
               default:
                 throw new Error(`Unsupported channel type: ${channelType}`);
@@ -625,11 +603,10 @@ describe('AppService - Property-Based Tests', () => {
                 break;
               }
               case 'dingtalk':
-              case 'feishu': {
-                const webhookApp = app as WebhookAppConfig;
-                expect(webhookApp.webhookUrl).toBeDefined();
+              case 'feishu':
+                // Webhook channels don't store webhookUrl in app, it's in channel config
+                expect(app.channelType).toBe(channelType);
                 break;
-              }
             }
           }
         ),
