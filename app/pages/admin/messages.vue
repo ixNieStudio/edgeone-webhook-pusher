@@ -39,57 +39,61 @@
 
     <!-- Message Table -->
     <div v-else class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-      <table class="w-full">
-        <thead class="bg-gray-50 dark:bg-gray-800/50">
+      <div class="w-full overflow-x-auto">
+        <table class="w-full min-w-[980px] table-fixed">
+          <thead class="bg-gray-50 dark:bg-gray-800/50">
           <tr>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">类型</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">标题</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">来源/目标</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">状态</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">时间</th>
-            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
+            <th class="w-[100px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">方向</th>
+            <th class="w-[100px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">类型</th>
+            <th class="w-auto min-w-[220px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">标题</th>
+            <th class="w-[240px] min-w-[180px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">来源/目标</th>
+            <th class="w-[100px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">状态</th>
+            <th class="w-[180px] px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">时间</th>
+            <th class="w-[80px] px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">操作</th>
           </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
           <tr v-for="msg in messages" :key="msg.id" class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-            <td class="px-4 py-3">
+            <td class="w-[100px] px-4 py-3 align-top">
               <span :class="getDirectionClass(msg.direction)" class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full">
                 <Icon :icon="getDirectionIcon(msg.direction)" class="text-sm" />
                 {{ msg.direction === 'outbound' ? '发出' : '收到' }}
               </span>
             </td>
-            <td class="px-4 py-3">
+            <td class="w-[100px] px-4 py-3 align-top">
               <span :class="getTypeClass(msg.type)" class="px-2 py-0.5 text-xs font-medium rounded-full">
                 {{ getTypeLabel(msg.type) }}
               </span>
             </td>
-            <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+            <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 align-top">
               {{ msg.title }}
             </td>
-            <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+            <td class="w-[240px] px-4 py-3 text-sm text-gray-500 dark:text-gray-400 align-top">
               <template v-if="msg.direction === 'outbound'">
-                <div class="flex items-center gap-2">
-                  <Icon icon="heroicons:cube" class="text-gray-400 text-sm" />
-                  <span>{{ msg.appName || msg.appId || '-' }}</span>
+                <div class="flex items-start gap-2 min-w-0">
+                  <Icon icon="heroicons:cube" class="text-gray-400 text-sm shrink-0 mt-0.5" />
+                  <span class="min-w-0 break-words whitespace-normal leading-5">{{ msg.appName || msg.appId || '-' }}</span>
                 </div>
               </template>
               <template v-else>
-                <div class="flex items-center gap-2">
+                <div class="flex items-start gap-2 min-w-0">
                   <img
                     v-if="msg.userAvatar"
                     :src="msg.userAvatar"
-                    class="w-6 h-6 rounded-full object-cover"
+                    class="w-6 h-6 rounded-full object-cover shrink-0 mt-0.5"
                     :alt="msg.userNickname || '用户'"
                   />
-                  <div v-else class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div v-else class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 mt-0.5">
                     <Icon icon="heroicons:user" class="text-gray-400 text-sm" />
                   </div>
-                  <span>{{ msg.userNickname || truncateOpenId(msg.openId) }}</span>
+                  <div class="min-w-0">
+                    <p v-if="msg.userNickname" class="text-sm text-gray-700 dark:text-gray-200 break-words whitespace-normal leading-5">{{ msg.userNickname }}</p>
+                    <p class="text-xs font-mono text-gray-500 dark:text-gray-400 break-all leading-5">{{ msg.openId }}</p>
+                  </div>
                 </div>
               </template>
             </td>
-            <td class="px-4 py-3">
+            <td class="w-[100px] px-4 py-3 align-top">
               <template v-if="msg.direction === 'outbound' && msg.results">
                 <span :class="getStatusClass(msg.results)" class="px-2 py-0.5 text-xs font-medium rounded-full">
                   {{ getStatusText(msg.results) }}
@@ -97,10 +101,10 @@
               </template>
               <span v-else class="text-gray-400">-</span>
             </td>
-            <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+            <td class="w-[180px] px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap align-top">
               {{ formatDateTime(msg.createdAt) }}
             </td>
-            <td class="px-4 py-3 text-right">
+            <td class="w-[80px] px-4 py-3 text-right align-top">
               <button
                 class="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 @click="showDetail(msg)"
@@ -109,8 +113,9 @@
               </button>
             </td>
           </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- Pagination -->

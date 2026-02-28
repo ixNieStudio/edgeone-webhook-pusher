@@ -9,10 +9,10 @@
 import Router from '@koa/router';
 import type { AppContext } from '../types/context.js';
 import { demoAppService } from '../services/demo-app.service.js';
-import { appService } from '../services/app.service.js';
 import { bindCodeService } from '../services/bindcode.service.js';
 import { channelService } from '../services/channel.service.js';
 import { cleanupService } from '../services/cleanup.service.js';
+import { openidService } from '../services/openid.service.js';
 import { extractBaseUrl } from '../middleware/kv-base-url.js';
 import { ApiError } from '../types/index.js';
 import type { PushMode, MessageType } from '../types/app.js';
@@ -37,11 +37,10 @@ router.use(async (ctx: AppContext, next) => {
 /**
  * 计算剩余天数
  */
-function calculateDaysRemaining(createdAt?: string): number {
-  if (!createdAt) return 0;
-  const created = new Date(createdAt);
+function calculateDaysRemaining(expiresAt: string): number {
+  const expiry = new Date(expiresAt);
   const now = new Date();
-  const diff = 3 - Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+  const diff = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   return Math.max(0, diff);
 }
 
@@ -50,7 +49,7 @@ function calculateDaysRemaining(createdAt?: string): number {
  * @tag DemoApps
  * @summary 获取所有体验应用
  * @description 返回所有标记为体验的应用列表
- * @returns {App[]} 体验应用列表
+ * @returns {DemoApp[]} 体验应用列表
  */
 router.get('/', async (ctx: AppContext) => {
   // 触发清理任务（传递 baseUrl）
@@ -62,8 +61,9 @@ router.get('/', async (ctx: AppContext) => {
   // 添加 openIdCount 和剩余天数
   const appsWithInfo = await Promise.all(
     apps.map(async (app) => {
-      const openIdCount = await appService.getOpenIDCount(app.id);
-      const daysRemaining = calculateDaysRemaining(app.demoCreatedAt);
+      const openIds = await openidService.listByApp(app.id);
+      const openIdCount = openIds.length;
+      const daysRemaining = calculateDaysRemaining(app.expiresAt);
 
       return {
         ...app,
@@ -82,7 +82,7 @@ router.get('/', async (ctx: AppContext) => {
  * @summary 创建新的体验应用
  * @description 创建一个新的体验应用，自动使用固定模板和第一个渠道
  * @param {object} body - 应用创建参数
- * @returns {App} 创建的体验应用信息
+ * @returns {DemoApp} 创建的体验应用信息
  */
 router.post('/', async (ctx: AppContext) => {
   // 触发清理任务（传递 baseUrl）
@@ -114,7 +114,7 @@ router.post('/', async (ctx: AppContext) => {
  * @summary 获取体验应用详情
  * @description 根据 ID 获取单个体验应用的详细信息
  * @param {string} id - 应用 ID
- * @returns {App} 体验应用详情
+ * @returns {DemoApp} 体验应用详情
  */
 router.get('/:id', async (ctx: AppContext) => {
   const { id } = ctx.params;
@@ -124,8 +124,9 @@ router.get('/:id', async (ctx: AppContext) => {
     throw ApiError.notFound('Demo app not found');
   }
 
-  const openIdCount = await appService.getOpenIDCount(id);
-  const daysRemaining = calculateDaysRemaining(app.demoCreatedAt);
+  const openIds = await openidService.listByApp(id);
+  const openIdCount = openIds.length;
+  const daysRemaining = calculateDaysRemaining(app.expiresAt);
 
   ctx.body = { ...app, openIdCount, daysRemaining };
 });

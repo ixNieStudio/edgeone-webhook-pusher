@@ -26,6 +26,12 @@ vi.mock('./app.service.js', () => ({
   },
 }));
 
+vi.mock('./demo-app.service.js', () => ({
+  demoAppService: {
+    getByKey: vi.fn(),
+  },
+}));
+
 vi.mock('./channel.service.js', () => ({
   channelService: {
     getById: vi.fn(),
@@ -47,12 +53,14 @@ vi.mock('./message.service.js', () => ({
 // Import after mocking
 import { pushService } from './push.service.js';
 import { appService } from './app.service.js';
+import { demoAppService } from './demo-app.service.js';
 import { channelService } from './channel.service.js';
 import { openidService } from './openid.service.js';
 import { messageService } from './message.service.js';
 
 // Type the mocked services
 const mockAppService = vi.mocked(appService);
+const mockDemoAppService = vi.mocked(demoAppService);
 const mockChannelService = vi.mocked(channelService);
 const mockOpenidService = vi.mocked(openidService);
 const mockMessageService = vi.mocked(messageService);
@@ -62,6 +70,8 @@ describe('PushService Integration Tests', () => {
     // 重置所有 mocks
     vi.clearAllMocks();
     mockMessageService.saveMessage.mockResolvedValue(undefined);
+    // Demo app service 默认返回 null (没有找到 demo 应用)
+    mockDemoAppService.getByKey.mockResolvedValue(null);
   });
 
   describe('微信渠道完整流程', () => {

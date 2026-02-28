@@ -6,6 +6,7 @@ export type PushMode = 'single' | 'subscribe';
 export type MessageType = 'normal' | 'template';
 
 // 基础应用配置
+// 基础应用配置
 export interface BaseApp {
   id: string;
   key: string;
@@ -13,10 +14,6 @@ export interface BaseApp {
   channelId: string;
   createdAt: string;
   updatedAt: string;
-  
-  // 体验模式字段
-  isDemoApp?: boolean;      // 是否为体验应用
-  demoCreatedAt?: string;   // 体验应用创建时间（用于计算过期）
 }
 
 // 微信应用配置

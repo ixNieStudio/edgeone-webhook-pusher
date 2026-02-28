@@ -3,6 +3,7 @@
  */
 
 import type { App } from './app';
+import type { DemoApp } from './demo-app';
 
 /**
  * 统计数据
@@ -55,6 +56,14 @@ export interface MessageQueryParams extends PaginationParams {
 /**
  * App 带订阅者数量（后端 GET /apps 和 GET /apps/:id 返回）
  */
-export interface AppWithCount extends App {
+export type AppWithCount = App & {
   openIdCount: number;
-}
+};
+
+/**
+ * DemoApp 带额外信息（剩余天数、订阅者数量）
+ */
+export type DemoAppWithInfo = DemoApp & {
+  daysRemaining?: number;
+  openIdCount: number;
+};

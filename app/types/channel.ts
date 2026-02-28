@@ -51,10 +51,10 @@ export interface Channel {
 export interface CreateChannelInput {
   name: string;
   type?: ChannelType;
-  config: ChannelConfig;
+  config: ChannelConfigCompat;  // 使用兼容接口以支持表单访问所有字段
 }
 
 export interface UpdateChannelInput {
   name?: string;
-  config?: Partial<ChannelConfig>;
+  config?: Partial<ChannelConfigCompat>;  // 使用兼容接口
 }

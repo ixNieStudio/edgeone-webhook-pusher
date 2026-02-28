@@ -5,16 +5,15 @@
  * 体验应用 API 客户端，无需认证
  */
 
-import type { ApiResponse, AppWithCount, CreateBindCodeResponse, BindCodeStatusResponse } from '~/types';
+import type { ApiResponse, DemoAppWithInfo, CreateBindCodeResponse, BindCodeStatusResponse } from '~/types';
+
+// Re-export for components that import from this composable
+export type { DemoAppWithInfo } from '~/types';
 
 export interface DemoAppCreateInput {
   name: string;
   pushMode: 'single' | 'subscribe';
   messageType?: 'text' | 'template';
-}
-
-export interface DemoAppWithInfo extends AppWithCount {
-  daysRemaining?: number;
 }
 
 // Custom response type for demo apps composable

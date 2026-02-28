@@ -264,11 +264,11 @@ async function handleCreate() {
     toast.add({ title: '请输入渠道名称', color: 'warning' });
     return;
   }
-  if (!createForm.value.config.appId.trim()) {
+  if (!createForm.value.config.appId?.trim()) {
     toast.add({ title: '请输入 AppID', color: 'warning' });
     return;
   }
-  if (!createForm.value.config.appSecret.trim()) {
+  if (!createForm.value.config.appSecret?.trim()) {
     toast.add({ title: '请输入 AppSecret', color: 'warning' });
     return;
   }

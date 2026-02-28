@@ -51,7 +51,7 @@
               创建第一个应用
             </button>
             <div v-else class="text-sm text-gray-500">
-              请先 <NuxtLink to="/channels" class="text-primary-600 hover:underline">创建渠道</NuxtLink>
+              请先 <NuxtLink to="/admin/channels" class="text-primary-600 hover:underline">创建渠道</NuxtLink>
             </div>
           </template>
         </EmptyState>

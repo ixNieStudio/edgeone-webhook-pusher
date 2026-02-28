@@ -6,6 +6,7 @@ export type PushMode = 'single' | 'subscribe';
 export type MessageType = 'normal' | 'template';
 
 // 基础应用配置
+// 基础应用配置
 export interface BaseApp {
   id: string;
   key: string;
@@ -14,10 +15,8 @@ export interface BaseApp {
   createdAt: string;
   updatedAt: string;
   
-  // 体验模式字段
-  isDemoApp?: boolean;      // 是否为体验应用
-  demoCreatedAt?: string;   // 体验应用创建时间（用于计算过期）
-  
+  // 兼容性字段（用于前端组件，根据 channelType 判断是否存在）
+  // 这些字段在不同的 App 类型中可能存在或不存在
   // 兼容性字段（用于前端组件，根据 channelType 判断是否存在）
   // 这些字段在不同的 App 类型中可能存在或不存在
   pushMode?: PushMode;           // 微信专用

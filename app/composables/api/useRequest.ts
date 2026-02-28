@@ -41,10 +41,9 @@ export function useRequest() {
         return { code: 0, message: 'success', data: null as T };
       }
 
-      // Handle 401 - redirect to login
       if (res.status === 401) {
         auth.logout();
-        router.push('/login');
+        router.push('/admin/login');
         return { code: 401, message: '未授权，请重新登录', data: null as T };
       }
 

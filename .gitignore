@@ -50,4 +50,6 @@ shared/internal-key.json
 .github/copilot/
 .kittify/.dashboard
 .kittify/workspaces/
+.edgeone/
 edge-functions/
+.omc/

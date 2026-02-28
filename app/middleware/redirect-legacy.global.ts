@@ -1,23 +1,23 @@
 /**
  * Redirect legacy detail page URLs to new master-detail layout
- * /channels/:id -> /channels?selected=:id
- * /apps/:id -> /apps?selected=:id
+ * /channels/:id -> /admin/channels?selected=:id
+ * /apps/:id -> /admin/apps?selected=:id
  */
 export default defineNuxtRouteMiddleware((to) => {
-  // Redirect /channels/:id to /channels?selected=:id
+  // Redirect /channels/:id to /admin/channels?selected=:id
   const channelMatch = to.path.match(/^\/channels\/([^/]+)$/);
   if (channelMatch) {
     return navigateTo({
-      path: '/channels',
+      path: '/admin/channels',
       query: { selected: channelMatch[1] },
     });
   }
 
-  // Redirect /apps/:id to /apps?selected=:id
+  // Redirect /apps/:id to /admin/apps?selected=:id
   const appMatch = to.path.match(/^\/apps\/([^/]+)$/);
   if (appMatch) {
     return navigateTo({
-      path: '/apps',
+      path: '/admin/apps',
       query: { selected: appMatch[1] },
     });
   }

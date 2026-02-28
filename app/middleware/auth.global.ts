@@ -9,7 +9,6 @@ import { useAuthStore } from '~/stores/auth';
 
 // API 和公开路径白名单 - 这些路径不需要认证
 const PUBLIC_PATHS = [
-  '/login',
   '/admin/login',
   '/bind-',
   '/subscribe-',
@@ -39,7 +38,6 @@ export default defineNuxtRouteMiddleware((to) => {
   const isDemoMode = config.public.demoMode;
   
   if (isDemoMode && to.path === '/') {
-    console.log('[Auth Middleware] Demo mode enabled, skipping auth for root path');
     return;
   }
 
@@ -55,8 +53,6 @@ export default defineNuxtRouteMiddleware((to) => {
 
   // Redirect to login if not authenticated
   if (!auth.isLoggedIn) {
-    const loginPath = isDemoMode ? '/admin/login' : '/login';
-    console.log('[Auth Middleware] Not logged in, redirecting to:', loginPath);
-    return navigateTo(loginPath);
+    return navigateTo('/admin/login');
   }
 });

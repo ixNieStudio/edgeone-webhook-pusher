@@ -26,5 +26,8 @@ export * from './constants';
 // 前端特有类型
 export * from './frontend';
 
+// Demo App 体验应用
+export * from './demo-app';
+
 // BindCode 绑定码
 export * from './bindcode';

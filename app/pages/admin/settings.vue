@@ -41,7 +41,7 @@
         <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
           <div class="flex items-center justify-between">
             <span class="font-medium">微信公众号配置</span>
-            <NuxtLink to="/channels">
+            <NuxtLink to="/admin/channels">
               <button class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                 前往渠道管理
                 <Icon icon="heroicons:arrow-right" class="text-base" />

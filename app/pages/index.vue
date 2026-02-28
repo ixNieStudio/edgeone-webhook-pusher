@@ -1,36 +1,31 @@
 <template>
   <div class="h-full">
-    <!-- Demo Mode: Show demo apps page -->
+    <!-- Demo Mode: Show demo experience page -->
     <DemoAppsPage v-if="isDemoMode" />
-    
-    <!-- Normal Mode: Redirect to /apps -->
+    <!-- Normal Mode: Redirect to /admin/apps -->
     <div v-else class="flex items-center justify-center h-full">
       <div class="text-center">
-        <Icon icon="heroicons:arrow-path" class="text-4xl animate-spin text-gray-400 mx-auto mb-4" />
-        <p class="text-sm text-gray-600 dark:text-gray-400">正在跳转...</p>
+        <Icon icon="svg-spinners:ring-resize" class="text-5xl text-primary-600 mx-auto mb-4" />
+        <p class="text-sm text-[var(--text-secondary)] font-medium">正在跳转...</p>
       </div>
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
-
 const config = useRuntimeConfig();
 const isDemoMode = config.public.demoMode;
-
-// 动态设置布局
+// Set layout dynamically
 setPageLayout(isDemoMode ? 'demo' : 'default');
-
 definePageMeta({
   middleware: [
     function (to) {
       const config = useRuntimeConfig();
       const isDemoMode = config.public.demoMode;
       
-      // 非体验模式下，重定向到 /apps
+      // Redirect to /admin/apps in non-demo mode
       if (!isDemoMode && to.path === '/') {
-        return navigateTo('/apps', { replace: true });
+        return navigateTo('/admin/apps', { replace: true });
       }
     }
   ]

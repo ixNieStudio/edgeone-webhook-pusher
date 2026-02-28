@@ -40,7 +40,7 @@
           <div class="flex-1">
             <div class="font-medium text-sm">创建渠道并配置接口</div>
             <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              在本系统的 <NuxtLink to="/channels" class="text-primary-600 hover:underline">渠道管理</NuxtLink> 页面创建渠道，填入测试号的 AppID 和 AppSecret。然后在微信测试号管理页面配置「接口配置信息」，填写服务器 URL 和 Token（创建渠道后会提供）。
+              在本系统的 <NuxtLink to="/admin/channels" class="text-primary-600 hover:underline">渠道管理</NuxtLink> 页面创建渠道，填入测试号的 AppID 和 AppSecret。然后在微信测试号管理页面配置「接口配置信息」，填写服务器 URL 和 Token（创建渠道后会提供）。
             </div>
           </div>
         </div>

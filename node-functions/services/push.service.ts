@@ -8,6 +8,7 @@
  */
 
 import { appService } from './app.service.js';
+import { demoAppService } from './demo-app.service.js';
 import { openidService } from './openid.service.js';
 import { channelService } from './channel.service.js';
 import { messageService } from './message.service.js';
@@ -15,7 +16,7 @@ import { generatePushId, now } from '../shared/utils.js';
 import { isWeChatApp, isWorkWeChatApp, isWebhookApp } from '../shared/type-guards.js';
 import { ChannelStrategyFactory } from '../strategies/channel-strategy-factory.js';
 import type { PushMessage } from '../strategies/types.js';
-import type { PushResult, PushMessageInput, Message, App, Channel } from '../types/index.js';
+import type { PushResult, PushMessageInput, Message, App, Channel, DemoApp } from '../types/index.js';
 import { PushModes } from '../types/index.js';
 
 class PushService {
@@ -32,8 +33,20 @@ class PushService {
     const pushId = generatePushId();
     const createdAt = now();
 
-    // 1. 查找 App
-    const app = await appService.getByKey(appKey);
+    // 1. 查找 App (先查生产应用，再查体验应用)
+    let app = await appService.getByKey(appKey);
+    let isDemoApp = false;
+    
+    if (!app) {
+      // 尝试查找体验应用
+      const demoApp = await demoAppService.getByKey(appKey);
+      if (demoApp) {
+        // 将 DemoApp 转换为 App 格式用于推送
+        app = this.convertDemoAppToApp(demoApp);
+        isDemoApp = true;
+      }
+    }
+    
     if (!app) {
       return {
         pushId,
@@ -171,6 +184,25 @@ class PushService {
       default:
         throw new Error(`Unsupported channel type: ${(channel as any).type}`);
     }
+  }
+
+  /**
+   * 将 DemoApp 转换为 App 格式
+   * Demo 应用只支持微信渠道的模板消息
+   */
+  private convertDemoAppToApp(demoApp: DemoApp): App {
+    return {
+      id: demoApp.id,
+      key: demoApp.key,
+      name: demoApp.name,
+      channelId: demoApp.channelId,
+      channelType: 'wechat',
+      pushMode: demoApp.pushMode,
+      messageType: demoApp.messageType,
+      templateId: demoApp.templateId,
+      createdAt: demoApp.createdAt,
+      updatedAt: demoApp.updatedAt,
+    };
   }
 }
 
