@@ -18,7 +18,7 @@ export default defineNuxtConfig({
 
   // 开发模式代理配置
   // 将 /v1/* 请求代理到本地 Node Functions 服务器
-  // rewrite 去掉 /v1 前缀，因为 Node Functions 本地运行时路由不带 /v1
+  // /api/* 请求由 EdgeOne dev server 的 Edge Functions 处理（不代理）
   vite: {
     server: {
       proxy: {
@@ -27,6 +27,9 @@ export default defineNuxtConfig({
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/v1/, ''),
         },
+      },
+      watch: {
+        ignored: ['**/node-functions/**', '**/edge-functions/**', '**/edge-functions-src/**'],
       },
     },
   },
@@ -43,6 +46,7 @@ export default defineNuxtConfig({
       routes: ['/'],
       ignore: ['/api/**', '/v1/**', '/send/**'],
     },
+    ignore: ['node-functions/**', 'edge-functions/**', 'edge-functions-src/**'],
   },
 
   hooks: {
@@ -50,15 +54,19 @@ export default defineNuxtConfig({
       const rootDir = process.cwd();
       const distDir = resolve(rootDir, 'dist');
 
-      // 只复制 node-functions 到 dist/（edge-functions 在根目录，EdgeOne 直接读取）
+      // 复制 Node Functions 到 dist/，确保部署产物包含 /v1/* 路由
       cpSync(resolve(rootDir, 'node-functions'), resolve(distDir, 'node-functions'), { recursive: true });
       console.log('✓ Copied node-functions to dist/');
 
-      // 注入密钥到根目录的 edge-functions/（EdgeOne 从这里部署）
+      // 注入密钥到根目录 edge-functions/
       const { execSync } = require('child_process');
       try {
         execSync('tsx scripts/generate-internal-key.ts', { stdio: 'inherit' });
         console.log('✓ Injected internal key into edge-functions/');
+
+        // 复制 Edge Functions 到 dist/，确保部署产物包含 /api/* 路由
+        cpSync(resolve(rootDir, 'edge-functions'), resolve(distDir, 'edge-functions'), { recursive: true });
+        console.log('✓ Copied edge-functions to dist/');
       } catch (error) {
         console.error('❌ Failed to inject internal key:', error);
         process.exit(1);
