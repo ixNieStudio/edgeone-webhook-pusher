@@ -61,9 +61,22 @@ class MessageService {
   /**
    * 保存消息记录
    */
-  async saveMessage(message: Message): Promise<void> {
+  async saveMessage(
+    message: Message,
+    options?: {
+      // 轻量模式：仅保存消息详情，不维护 msg_list/msg_channel/msg_app/msg_openid 索引
+      skipIndexes?: boolean;
+    }
+  ): Promise<void> {
+    const skipIndexes = options?.skipIndexes === true;
+
     // 保存消息记录
     await messagesKV.put(KVKeys.MESSAGE(message.id), message);
+
+    // 轻量模式：不维护列表索引，降低热路径 KV 读写次数
+    if (skipIndexes) {
+      return;
+    }
 
     // 更新全局消息列表
     const globalList = (await messagesKV.get<string[]>(KVKeys.MESSAGE_LIST)) || [];

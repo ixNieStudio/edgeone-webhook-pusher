@@ -18,8 +18,16 @@ import { existsSync, readFileSync } from 'fs';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-// AsyncLocalStorage for storing base URL per request
-const asyncLocalStorage = new AsyncLocalStorage<string>();
+interface KVRequestContext {
+  baseUrl: string;
+  // 同一次请求内的 GET 结果复用，减少重复 KV HTTP 请求
+  getCache: Map<string, unknown>;
+  // 同一 key 并发读取时做请求合并
+  inflightGets: Map<string, Promise<unknown>>;
+}
+
+// AsyncLocalStorage for storing per-request KV context
+const asyncLocalStorage = new AsyncLocalStorage<KVRequestContext>();
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let cachedBuildKey: string | null | undefined;
@@ -72,7 +80,13 @@ export function setKVBaseUrl(url: string): void {
  * 在指定的 baseUrl 上下文中运行 KV 操作
  */
 export function runKVOperation<T>(baseUrl: string, fn: () => T | Promise<T>): Promise<T> {
-  return asyncLocalStorage.run(baseUrl, async () => {
+  const context: KVRequestContext = {
+    baseUrl,
+    getCache: new Map<string, unknown>(),
+    inflightGets: new Map<string, Promise<unknown>>(),
+  };
+
+  return asyncLocalStorage.run(context, async () => {
     return await fn();
   });
 }
@@ -90,9 +104,9 @@ function getBaseUrl(): string {
   }
   
   // 从 AsyncLocalStorage 获取
-  const contextUrl = asyncLocalStorage.getStore();
-  if (contextUrl) {
-    return contextUrl;
+  const context = asyncLocalStorage.getStore();
+  if (context?.baseUrl) {
+    return context.baseUrl;
   }
   
   // 返回空字符串（同源请求）
@@ -154,6 +168,30 @@ interface KVResponse<T = unknown> {
 }
 
 /**
+ * 统一解析 KV API 响应，避免 HTML/文本响应导致 JSON 解析异常
+ */
+async function parseKVResponse<T>(res: Response, url: string): Promise<KVResponse<T>> {
+  if (typeof res.text === 'function') {
+    const text = await res.text();
+    try {
+      return JSON.parse(text) as KVResponse<T>;
+    } catch {
+      const preview = text.slice(0, 120).replace(/\s+/g, ' ').trim();
+      throw new Error(
+        `KV API returned non-JSON response (status: ${res.status}) from ${url}. Body starts with: ${preview}`
+      );
+    }
+  }
+
+  // 兼容测试环境中的 fetch mock（仅提供 json 方法）
+  if (typeof (res as any).json === 'function') {
+    return (await (res as any).json()) as KVResponse<T>;
+  }
+
+  throw new Error(`KV API response parser is unavailable for ${url}`);
+}
+
+/**
  * 调试日志
  */
 function debugLog(message: string, ...args: any[]): void {
@@ -176,65 +214,102 @@ function errorLog(message: string, details: any): void {
  * Create a typed KV client for a specific namespace
  */
 function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
+  const getCacheKey = (key: string): string => `${namespace}:${key}`;
+
   return {
     async get<R = T>(key: string): Promise<R | null> {
-      const baseUrl = getBaseUrl();
-      const url = `${baseUrl}/api/kv/${namespace}?action=get&key=${encodeURIComponent(key)}`;
-      
-      // 始终打印关键信息用于调试
-      console.log('\x1b[35m[KV Client]\x1b[0m GET request:', {
-        namespace,
-        key,
-        baseUrl,
-        fullUrl: url,
-        hasInternalKey: !!getInternalKey(),
-      });
-      
-      try {
-        const res = await fetch(url, {
-          headers: getAuthHeaders(),
-        });
+      const context = asyncLocalStorage.getStore();
+      const cacheKey = getCacheKey(key);
+
+      // 请求级复用：命中后直接返回
+      if (context?.getCache.has(cacheKey)) {
+        return context.getCache.get(cacheKey) as R | null;
+      }
+
+      // 请求级并发合并：同 key 并发 GET 只发一次请求
+      const existingInflight = context?.inflightGets.get(cacheKey);
+      if (existingInflight) {
+        return (await existingInflight) as R | null;
+      }
+
+      const doFetch = async (): Promise<R | null> => {
+        const baseUrl = getBaseUrl();
+        const url = `${baseUrl}/api/kv/${namespace}?action=get&key=${encodeURIComponent(key)}`;
         
-        const data = await res.json() as KVResponse<R>;
-        
-        console.log('\x1b[35m[KV Client]\x1b[0m GET response:', {
+        debugLog('GET request:', {
           namespace,
           key,
-          success: data.success,
-          hasData: !!data.data,
-          error: data.error,
+          baseUrl,
+          fullUrl: url,
+          hasInternalKey: !!getInternalKey(),
         });
         
-        if (!data.success) {
-          console.error('\x1b[31m[KV Client Error]\x1b[0m GET failed:', {
-            baseUrl,
-            url,
-            key,
+        try {
+          const res = await fetch(url, {
+            headers: getAuthHeaders(),
+          });
+
+          const data = await parseKVResponse<R>(res, url);
+
+          debugLog('GET response:', {
             namespace,
+            key,
+            success: data.success,
+            hasData: !!data.data,
             error: data.error,
           });
-          throw new Error(data.error || 'KV get failed');
+          
+          if (!data.success) {
+            errorLog('GET failed', {
+              baseUrl,
+              url,
+              key,
+              namespace,
+              error: data.error,
+            });
+            throw new Error(data.error || 'KV get failed');
+          }
+          return data.data ?? null;
+        } catch (error) {
+          // 捕获 fetch 错误
+          if (error instanceof Error && !error.message.includes('KV get failed')) {
+            errorLog('GET fetch error', {
+              baseUrl,
+              url,
+              key,
+              namespace,
+              error: error.message,
+              stack: error.stack,
+            });
+          }
+          throw error;
         }
-        return data.data ?? null;
-      } catch (error) {
-        // 捕获 fetch 错误
-        if (error instanceof Error && !error.message.includes('KV get failed')) {
-          console.error('\x1b[31m[KV Client Error]\x1b[0m GET fetch error:', {
-            baseUrl,
-            url,
-            key,
-            namespace,
-            error: error.message,
-            stack: error.stack,
-          });
-        }
-        throw error;
+      };
+
+      if (!context) {
+        return await doFetch();
       }
+
+      const inflight = doFetch()
+        .then((value) => {
+          context.getCache.set(cacheKey, value);
+          return value;
+        })
+        .finally(() => {
+          context.inflightGets.delete(cacheKey);
+        });
+
+      context.inflightGets.set(cacheKey, inflight as Promise<unknown>);
+      return (await inflight) as R | null;
     },
 
     async put<R = T>(key: string, value: R, ttl?: number): Promise<void> {
-      const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
-      const res = await fetch(`${baseUrl}?action=put`, {
+      const baseUrl = getBaseUrl();
+      const context = asyncLocalStorage.getStore();
+      const cacheKey = getCacheKey(key);
+      const baseUrlWithNamespace = `${baseUrl}/api/kv/${namespace}`;
+      const url = `${baseUrlWithNamespace}?action=put`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -242,21 +317,32 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
         },
         body: JSON.stringify({ key, value, ttl }),
       });
-      const data = await res.json() as KVResponse;
+      const data = await parseKVResponse(res, url);
       if (!data.success) {
         throw new Error(data.error || 'KV put failed');
       }
+
+      // 请求内写后读一致性：更新本地复用结果
+      context?.inflightGets.delete(cacheKey);
+      context?.getCache.set(cacheKey, value as unknown);
     },
 
     async delete(key: string): Promise<void> {
+      const context = asyncLocalStorage.getStore();
+      const cacheKey = getCacheKey(key);
       const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
-      const res = await fetch(`${baseUrl}?action=delete&key=${encodeURIComponent(key)}`, {
+      const url = `${baseUrl}?action=delete&key=${encodeURIComponent(key)}`;
+      const res = await fetch(url, {
         headers: getAuthHeaders(),
       });
-      const data = await res.json() as KVResponse;
+      const data = await parseKVResponse(res, url);
       if (!data.success) {
         throw new Error(data.error || 'KV delete failed');
       }
+
+      // 请求内写后读一致性：删除后视为 null
+      context?.inflightGets.delete(cacheKey);
+      context?.getCache.set(cacheKey, null);
     },
 
     async list(prefix = '', limit = 256, cursor?: string): Promise<KVListResult> {
@@ -269,10 +355,11 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       if (cursor) {
         params.set('cursor', cursor);
       }
-      const res = await fetch(`${baseUrl}?${params}`, {
+      const url = `${baseUrl}?${params}`;
+      const res = await fetch(url, {
         headers: getAuthHeaders(),
       });
-      const data = await res.json() as KVResponse;
+      const data = await parseKVResponse(res, url);
       if (!data.success) {
         throw new Error(data.error || 'KV list failed');
       }

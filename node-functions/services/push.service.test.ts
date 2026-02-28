@@ -41,6 +41,8 @@ vi.mock('./channel.service.js', () => ({
 vi.mock('./openid.service.js', () => ({
   openidService: {
     listByApp: vi.fn(),
+    getFirstOpenIdByApp: vi.fn(),
+    listOpenIdValuesByApp: vi.fn(),
   },
 }));
 
@@ -127,7 +129,7 @@ describe('PushService Integration Tests', () => {
       // 4. 设置 mock 返回值
       mockAppService.getByKey.mockResolvedValue(app);
       mockChannelService.getById.mockResolvedValue(channel);
-      mockOpenidService.listByApp.mockResolvedValue(openIds);
+      mockOpenidService.getFirstOpenIdByApp.mockResolvedValue(openIds[0].openId);
 
       // 5. Mock 微信 API 响应（包括 KV 缓存）
       (global.fetch as any).mockImplementation((url: string) => {
@@ -235,7 +237,7 @@ describe('PushService Integration Tests', () => {
 
       mockAppService.getByKey.mockResolvedValue(app);
       mockChannelService.getById.mockResolvedValue(channel);
-      mockOpenidService.listByApp.mockResolvedValue(openIds);
+      mockOpenidService.listOpenIdValuesByApp.mockResolvedValue(openIds.map((item) => item.openId));
 
       // 2. Mock 微信 API 响应（包括 KV 缓存）
       (global.fetch as any).mockImplementation((url: string) => {
@@ -666,7 +668,7 @@ describe('PushService Integration Tests', () => {
       // 微信渠道
       mockAppService.getByKey.mockResolvedValueOnce(wechatApp);
       mockChannelService.getById.mockResolvedValueOnce(wechatChannel);
-      mockOpenidService.listByApp.mockResolvedValueOnce(wechatOpenIds);
+      mockOpenidService.getFirstOpenIdByApp.mockResolvedValueOnce(wechatOpenIds[0].openId);
       const wechatResult = await pushService.push(wechatApp.key, message);
 
       // 企业微信渠道
@@ -728,7 +730,7 @@ describe('PushService Integration Tests', () => {
 
       mockAppService.getByKey.mockResolvedValue(app);
       mockChannelService.getById.mockResolvedValue(channel);
-      mockOpenidService.listByApp.mockResolvedValue([]); // 没有 OpenID
+      mockOpenidService.getFirstOpenIdByApp.mockResolvedValue(null); // 没有 OpenID
 
       const message: PushMessageInput = {
         title: '测试',

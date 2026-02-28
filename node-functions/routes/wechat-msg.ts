@@ -18,6 +18,7 @@ import { wechatService } from '../services/wechat.service.js';
 import { messageService } from '../services/message.service.js';
 import { generateMessageId } from '../shared/utils.js';
 import type { Message } from '../types/message.js';
+import { ApiError, ErrorCodes } from '../types/index.js';
 
 const router = new Router();
 
@@ -135,7 +136,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
     if (event === 'subscribe') {
       // 用户关注
       if (channelId && fromUser) {
-        await saveInboundMessage({
+        void saveInboundMessage({
           channelId,
           openId: fromUser,
           type: 'event',
@@ -159,7 +160,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
     } else if (event === 'unsubscribe') {
       // 用户取消关注（不回复）
       if (channelId && fromUser) {
-        await saveInboundMessage({
+        void saveInboundMessage({
           channelId,
           openId: fromUser,
           type: 'event',
@@ -172,7 +173,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
     } else if (event === 'SCAN' && eventKey && fromUser) {
       // 已关注用户扫码
       if (channelId && fromUser) {
-        await saveInboundMessage({
+        void saveInboundMessage({
           channelId,
           openId: fromUser,
           type: 'event',
@@ -185,7 +186,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
     } else {
       // 其他事件
       if (channelId && fromUser) {
-        await saveInboundMessage({
+        void saveInboundMessage({
           channelId,
           openId: fromUser,
           type: 'event',
@@ -199,7 +200,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
   } else if (msgType === 'text' && content && fromUser) {
     // 保存文本消息
     if (channelId) {
-      await saveInboundMessage({
+      void saveInboundMessage({
         channelId,
         openId: fromUser,
         type: 'text',
@@ -214,7 +215,7 @@ async function handleWeChatMessage(ctx: AppContext, channelId?: string) {
   } else if (msgType && fromUser) {
     // 其他类型消息（图片、语音、视频等）
     if (channelId) {
-      await saveInboundMessage({
+      void saveInboundMessage({
         channelId,
         openId: fromUser,
         type: 'text',
@@ -263,7 +264,7 @@ async function saveInboundMessage(params: {
       event: params.event,
       createdAt: new Date().toISOString(),
     };
-    await messageService.saveMessage(message);
+    await messageService.saveMessage(message, { skipIndexes: true });
   } catch (error) {
     // 保存失败不影响消息处理
     if (process.env.DEBUG_KV_URL === 'true') {
@@ -357,12 +358,6 @@ async function performBind(code: string, openId: string, channelId?: string): Pr
 
     const { appId } = bindCodeRecord;
 
-    // 检查是否已绑定该应用
-    const existingOpenId = await openidService.findByOpenId(appId, openId);
-    if (existingOpenId) {
-      return '✅ 您已绑定该应用，无需重复绑定';
-    }
-
     // 获取应用信息
     const app = await appService.getById(appId);
     if (!app) {
@@ -376,7 +371,11 @@ async function performBind(code: string, openId: string, channelId?: string): Pr
 
     if (channel) {
       try {
-        const userInfo = await wechatService.getUserInfo(channel, openId);
+        // 用户资料查询设置超时，避免阻塞微信回调
+        const userInfo = await Promise.race([
+          wechatService.getUserInfo(channel, openId),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 800)),
+        ]);
         if (userInfo) {
           nickname = userInfo.nickname;
           avatar = userInfo.avatar;
@@ -388,11 +387,26 @@ async function performBind(code: string, openId: string, channelId?: string): Pr
     }
 
     // 创建 OpenID 记录
-    await openidService.create(appId, {
-      openId,
-      nickname,
-      avatar,
-    });
+    try {
+      await openidService.create(
+        appId,
+        {
+          openId,
+          nickname,
+          avatar,
+        },
+        {
+          // 应用已在当前流程校验过，避免重复 KV 读取
+          skipAppValidation: true,
+        }
+      );
+    } catch (error) {
+      // 幂等处理：重复绑定快速返回成功提示
+      if (error instanceof ApiError && error.code === ErrorCodes.ALREADY_SUBSCRIBED) {
+        return '✅ 您已绑定该应用，无需重复绑定';
+      }
+      throw error;
+    }
 
     // 更新绑定码状态
     await bindCodeService.markAsBound(code, openId, nickname, avatar);

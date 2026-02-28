@@ -13,8 +13,13 @@ class OpenIdService {
   /**
    * 在指定应用下创建 OpenID 记录
    */
-  async create(appId: string, data: CreateOpenIDInput): Promise<OpenID> {
+  async create(
+    appId: string,
+    data: CreateOpenIDInput,
+    options?: { skipAppValidation?: boolean; skipExistsCheck?: boolean }
+  ): Promise<OpenID> {
     const { openId, nickname, avatar, remark } = data;
+    const { skipAppValidation = false, skipExistsCheck = false } = options || {};
 
     // 验证必填字段
     if (!openId || !openId.trim()) {
@@ -23,16 +28,20 @@ class OpenIdService {
 
     const trimmedOpenId = openId.trim();
 
-    // 验证应用存在
-    const app = await appsKV.get<App>(KVKeys.APP(appId));
-    if (!app) {
-      throw ApiError.notFound('App not found', ErrorCodes.APP_NOT_FOUND);
+    if (!skipAppValidation) {
+      // 验证应用存在
+      const app = await appsKV.get<App>(KVKeys.APP(appId));
+      if (!app) {
+        throw ApiError.notFound('App not found', ErrorCodes.APP_NOT_FOUND);
+      }
     }
 
-    // 检查同一应用下是否已存在该 OpenID
-    const exists = await this.existsInApp(appId, trimmedOpenId);
-    if (exists) {
-      throw ApiError.badRequest('OpenID already exists in this app', ErrorCodes.ALREADY_SUBSCRIBED);
+    if (!skipExistsCheck) {
+      // 检查同一应用下是否已存在该 OpenID
+      const exists = await this.existsInApp(appId, trimmedOpenId);
+      if (exists) {
+        throw ApiError.badRequest('OpenID already exists in this app', ErrorCodes.ALREADY_SUBSCRIBED);
+      }
     }
 
     const id = generateOpenIdRecordId();
@@ -82,6 +91,43 @@ class OpenIdService {
 
     // 过滤掉 null 值
     return records.filter((record): record is OpenID => record !== null);
+  }
+
+  /**
+   * 获取指定应用下的第一个 OpenID（用于单发模式，避免加载全量记录）
+   */
+  async getFirstOpenIdByApp(appId: string): Promise<string | null> {
+    const ids = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
+    if (ids.length === 0) {
+      return null;
+    }
+
+    // 处理索引与明细可能短暂不一致的情况，找到首个有效记录
+    for (const id of ids) {
+      const record = await openidsKV.get<OpenID>(KVKeys.OPENID(id));
+      if (record?.openId) {
+        return record.openId;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 获取指定应用下的所有 OpenID 值（轻量版，仅返回 openId 字符串）
+   */
+  async listOpenIdValuesByApp(appId: string): Promise<string[]> {
+    const ids = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const recordPromises = ids.map(id => openidsKV.get<OpenID>(KVKeys.OPENID(id)));
+    const records = await Promise.all(recordPromises);
+
+    return records
+      .filter((record): record is OpenID => record !== null)
+      .map((record) => record.openId);
   }
 
   /**

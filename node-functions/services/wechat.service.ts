@@ -382,55 +382,71 @@ export async function createQRCode(
     throw new Error('Channel is required');
   }
 
-  const accessToken = await getAccessToken(channel);
+  let accessToken = await getAccessToken(channel);
   if (!accessToken) {
     return null;
   }
 
-  try {
-    const url = `https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=${accessToken}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        expire_seconds: expireSeconds,
-        action_name: 'QR_STR_SCENE',
-        action_info: {
-          scene: {
-            scene_str: sceneStr,
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const url = `https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=${accessToken}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          expire_seconds: expireSeconds,
+          action_name: 'QR_STR_SCENE',
+          action_info: {
+            scene: {
+              scene_str: sceneStr,
+            },
           },
-        },
-      }),
-    });
+        }),
+      });
 
-    const data = (await res.json()) as {
-      ticket?: string;
-      expire_seconds?: number;
-      url?: string;
-      errcode?: number;
-      errmsg?: string;
-    };
+      const data = (await res.json()) as {
+        ticket?: string;
+        expire_seconds?: number;
+        url?: string;
+        errcode?: number;
+        errmsg?: string;
+      };
 
-    if (data.errcode) {
-      console.error('Failed to create QR code:', data);
-      // 48001 表示 API 未授权（非认证服务号）
+      if (data.errcode) {
+        // Access Token 失效时强制刷新一次并重试
+        if ((data.errcode === 40001 || data.errcode === 42001) && attempt === 0) {
+          const refreshedToken = await getAccessToken(channel, true);
+          if (refreshedToken) {
+            accessToken = refreshedToken;
+            continue;
+          }
+        }
+
+        console.error('Failed to create QR code:', data);
+        // 48001 表示 API 未授权（非认证服务号）
+        return null;
+      }
+
+      // 兼容处理：部分场景下微信可能不返回 url，但 ticket 足够用于展示二维码
+      if (!data.ticket) {
+        console.error('Invalid QR code response:', data);
+        return null;
+      }
+
+      const qrImageUrl = getQRCodeImageUrl(data.ticket);
+
+      return {
+        ticket: data.ticket,
+        url: data.url || qrImageUrl,
+        expireSeconds: data.expire_seconds || expireSeconds,
+      };
+    } catch (error) {
+      console.error('Error creating QR code:', error);
       return null;
     }
-
-    if (!data.ticket || !data.url) {
-      console.error('Invalid QR code response:', data);
-      return null;
-    }
-
-    return {
-      ticket: data.ticket,
-      url: data.url,
-      expireSeconds: data.expire_seconds || expireSeconds,
-    };
-  } catch (error) {
-    console.error('Error creating QR code:', error);
-    return null;
   }
+
+  return null;
 }
 
 /**

@@ -13,10 +13,10 @@ import { openidService } from './openid.service.js';
 import { channelService } from './channel.service.js';
 import { messageService } from './message.service.js';
 import { generatePushId, now } from '../shared/utils.js';
-import { isWeChatApp, isWorkWeChatApp, isWebhookApp } from '../shared/type-guards.js';
+import { isWeChatApp, isWorkWeChatApp } from '../shared/type-guards.js';
 import { ChannelStrategyFactory } from '../strategies/channel-strategy-factory.js';
 import type { PushMessage } from '../strategies/types.js';
-import type { PushResult, PushMessageInput, Message, App, Channel, DemoApp } from '../types/index.js';
+import type { PushResult, PushMessageInput, Message, App, DemoApp } from '../types/index.js';
 import { PushModes } from '../types/index.js';
 
 class PushService {
@@ -57,8 +57,12 @@ class PushService {
       };
     }
 
-    // 2. 获取渠道配置
-    const channel = await channelService.getById(app.channelId);
+    // 2. 并行获取渠道配置和推送目标，缩短主链路等待时间
+    const [channel, targets] = await Promise.all([
+      channelService.getById(app.channelId),
+      this.getTargets(app),
+    ]);
+
     if (!channel) {
       return {
         pushId,
@@ -69,8 +73,7 @@ class PushService {
       };
     }
 
-    // 3. 根据渠道类型获取推送目标
-    const targets = await this.getTargets(app, channel);
+    // 3. 校验推送目标
     if (targets.length === 0) {
       return {
         pushId,
@@ -114,7 +117,12 @@ class PushService {
       results: result.results,
       createdAt,
     };
-    await messageService.saveMessage(messageRecord);
+    void messageService.saveMessage(messageRecord, { skipIndexes: true }).catch((error) => {
+      // 日志落盘失败不影响主流程
+      if (process.env.DEBUG_KV_URL === 'true') {
+        console.error('[PushService] Failed to save message record:', error);
+      }
+    });
 
     // 8. 返回结果（使用生成的 pushId 而不是策略返回的）
     return {
@@ -131,25 +139,20 @@ class PushService {
    * - 企业微信：从应用配置获取用户ID和部门ID
    * - Webhook：使用 Webhook URL 作为目标
    */
-  private async getTargets(app: App, channel: Channel): Promise<string[]> {
-    switch (channel.type) {
+  private async getTargets(app: App): Promise<string[]> {
+    switch (app.channelType) {
       case 'wechat': {
-        // 微信：从 OpenID 表获取
-        const openIds = await openidService.listByApp(app.id);
-        if (openIds.length === 0) {
-          return [];
-        }
-
         // 使用类型守卫检查应用类型
         if (isWeChatApp(app)) {
           if (app.pushMode === PushModes.SINGLE) {
-            // 单发模式：只发送给第一个 OpenID
-            return [openIds[0].openId];
+            // 单发模式：只读取首个 OpenID，避免全量加载
+            const openId = await openidService.getFirstOpenIdByApp(app.id);
+            return openId ? [openId] : [];
           }
         }
-        
+
         // 订阅模式：发送给所有 OpenID
-        return openIds.map(o => o.openId);
+        return await openidService.listOpenIdValuesByApp(app.id);
       }
 
       case 'work_wechat': {
@@ -179,7 +182,7 @@ class PushService {
       }
 
       default:
-        throw new Error(`Unsupported channel type: ${(channel as any).type}`);
+        throw new Error(`Unsupported channel type: ${(app as any).channelType}`);
     }
   }
 
