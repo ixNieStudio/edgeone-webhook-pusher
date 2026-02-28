@@ -51,6 +51,5 @@ shared/internal-key.json
 .kittify/.dashboard
 .kittify/workspaces/
 .edgeone/
-edge-functions/
 .omc/
 .sisyphus/

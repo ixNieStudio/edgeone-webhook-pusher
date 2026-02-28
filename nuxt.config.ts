@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { cpSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { randomBytes } from 'crypto';
 import { resolve } from 'path';
 
 export default defineNuxtConfig({
@@ -18,7 +19,7 @@ export default defineNuxtConfig({
 
   // 开发模式代理配置
   // 将 /v1/* 请求代理到本地 Node Functions 服务器
-  // /api/* 请求由 EdgeOne dev server 的 Edge Functions 处理（不代理）
+  // rewrite 去掉 /v1 前缀，因为 Node Functions 本地运行时路由不带 /v1
   vite: {
     server: {
       proxy: {
@@ -27,9 +28,6 @@ export default defineNuxtConfig({
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/v1/, ''),
         },
-      },
-      watch: {
-        ignored: ['**/node-functions/**', '**/edge-functions/**', '**/edge-functions-src/**'],
       },
     },
   },
@@ -46,31 +44,54 @@ export default defineNuxtConfig({
       routes: ['/'],
       ignore: ['/api/**', '/v1/**', '/send/**'],
     },
-    ignore: ['node-functions/**', 'edge-functions/**', 'edge-functions-src/**'],
   },
 
   hooks: {
     'nitro:build:public-assets': () => {
       const rootDir = process.cwd();
       const distDir = resolve(rootDir, 'dist');
+      const runtimeKey = randomBytes(32).toString('hex');
+      const keyPattern = /const BUILD_KEY = ['"]([a-f0-9]{64}|__BUILD_KEY_PLACEHOLDER__)['"];?/g;
 
       // 复制 Node Functions 到 dist/，确保部署产物包含 /v1/* 路由
       cpSync(resolve(rootDir, 'node-functions'), resolve(distDir, 'node-functions'), { recursive: true });
       console.log('✓ Copied node-functions to dist/');
 
-      // 注入密钥到根目录 edge-functions/
-      const { execSync } = require('child_process');
-      try {
-        execSync('tsx scripts/generate-internal-key.ts', { stdio: 'inherit' });
-        console.log('✓ Injected internal key into edge-functions/');
+      // 复制 Edge Functions 到 dist/，确保部署产物包含 /api/* 路由
+      cpSync(resolve(rootDir, 'edge-functions'), resolve(distDir, 'edge-functions'), { recursive: true });
+      console.log('✓ Copied edge-functions to dist/');
 
-        // 复制 Edge Functions 到 dist/，确保部署产物包含 /api/* 路由
-        cpSync(resolve(rootDir, 'edge-functions'), resolve(distDir, 'edge-functions'), { recursive: true });
-        console.log('✓ Copied edge-functions to dist/');
-      } catch (error) {
-        console.error('❌ Failed to inject internal key:', error);
-        process.exit(1);
+      // 将动态 key 写入 dist/shared/internal-key.json（不修改源码）
+      const sharedDir = resolve(distDir, 'shared');
+      mkdirSync(sharedDir, { recursive: true });
+      writeFileSync(
+        resolve(sharedDir, 'internal-key.json'),
+        JSON.stringify(
+          {
+            buildKey: runtimeKey,
+            generatedAt: new Date().toISOString(),
+          },
+          null,
+          2
+        )
+      );
+      console.log('✓ Generated dist/shared/internal-key.json');
+
+      // 注入动态 key 到 dist/edge-functions（不修改源码）
+      const kvDir = resolve(distDir, 'edge-functions', 'api', 'kv');
+      if (!existsSync(kvDir)) {
+        throw new Error(`KV functions directory not found: ${kvDir}`);
       }
+
+      const kvFiles = readdirSync(kvDir).filter((file) => file.endsWith('.js'));
+      for (const file of kvFiles) {
+        const filePath = resolve(kvDir, file);
+        const content = readFileSync(filePath, 'utf-8');
+        keyPattern.lastIndex = 0;
+        const replaced = content.replace(keyPattern, `const BUILD_KEY = '${runtimeKey}';`);
+        writeFileSync(filePath, replaced);
+      }
+      console.log(`✓ Injected runtime BUILD_KEY into dist edge-functions (${kvFiles.length} files)`);
     },
   },
 

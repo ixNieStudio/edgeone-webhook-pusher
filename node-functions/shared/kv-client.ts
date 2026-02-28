@@ -13,12 +13,45 @@
  * 优先使用环境变量 KV_BASE_URL，生产环境留空使用同源请求
  */
 
-// 导入构建时生成的密钥配置
-import keyConfig from '../../shared/internal-key.json' with { type: 'json' };
 import { AsyncLocalStorage } from 'async_hooks';
+import { existsSync, readFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 // AsyncLocalStorage for storing base URL per request
 const asyncLocalStorage = new AsyncLocalStorage<string>();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+let cachedBuildKey: string | null | undefined;
+
+/**
+ * 尝试从 shared/internal-key.json 读取构建时密钥（可选）
+ */
+function getBuildKeyFromFile(): string | null {
+  if (cachedBuildKey !== undefined) {
+    return cachedBuildKey;
+  }
+
+  const keyPath = resolve(__dirname, '../../shared/internal-key.json');
+  if (!existsSync(keyPath)) {
+    cachedBuildKey = null;
+    return cachedBuildKey;
+  }
+
+  try {
+    const raw = readFileSync(keyPath, 'utf-8');
+    const parsed = JSON.parse(raw) as { buildKey?: string };
+    if (parsed.buildKey && /^[a-f0-9]{64}$/.test(parsed.buildKey)) {
+      cachedBuildKey = parsed.buildKey;
+      return cachedBuildKey;
+    }
+  } catch (error) {
+    console.warn('[KV Client] Failed to read shared/internal-key.json:', error);
+  }
+
+  cachedBuildKey = null;
+  return cachedBuildKey;
+}
 
 /**
  * Set the base URL dynamically from request context
@@ -75,8 +108,14 @@ export function getInternalKey(): string {
   if (process.env.INTERNAL_DEBUG_KEY) {
     return process.env.INTERNAL_DEBUG_KEY;
   }
-  // 否则使用构建时生成的密钥
-  return keyConfig.buildKey;
+
+  // 回退：使用构建时生成的密钥（如果存在）
+  const buildKey = getBuildKeyFromFile();
+  if (buildKey) {
+    return buildKey;
+  }
+
+  throw new Error('Missing internal key: set INTERNAL_DEBUG_KEY env or provide shared/internal-key.json');
 }
 
 /**
@@ -112,22 +151,6 @@ interface KVResponse<T = unknown> {
   complete?: boolean;
   cursor?: string;
   error?: string;
-}
-
-/**
- * 解析 KV API 响应，提供更清晰的非 JSON 错误信息
- */
-async function parseKVResponse<T>(res: Response, url: string): Promise<KVResponse<T>> {
-  const text = await res.text();
-
-  try {
-    return JSON.parse(text) as KVResponse<T>;
-  } catch {
-    const preview = text.slice(0, 120).replace(/\s+/g, ' ').trim();
-    throw new Error(
-      `KV API returned non-JSON response (status: ${res.status}) from ${url}. Body starts with: ${preview}`
-    );
-  }
 }
 
 /**
@@ -171,8 +194,8 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
         const res = await fetch(url, {
           headers: getAuthHeaders(),
         });
-
-        const data = await parseKVResponse<R>(res, url);
+        
+        const data = await res.json() as KVResponse<R>;
         
         console.log('\x1b[35m[KV Client]\x1b[0m GET response:', {
           namespace,
@@ -211,8 +234,7 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
 
     async put<R = T>(key: string, value: R, ttl?: number): Promise<void> {
       const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
-      const url = `${baseUrl}?action=put`;
-      const res = await fetch(url, {
+      const res = await fetch(`${baseUrl}?action=put`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -220,7 +242,7 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
         },
         body: JSON.stringify({ key, value, ttl }),
       });
-      const data = await parseKVResponse(res, url);
+      const data = await res.json() as KVResponse;
       if (!data.success) {
         throw new Error(data.error || 'KV put failed');
       }
@@ -228,11 +250,10 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
 
     async delete(key: string): Promise<void> {
       const baseUrl = `${getBaseUrl()}/api/kv/${namespace}`;
-      const url = `${baseUrl}?action=delete&key=${encodeURIComponent(key)}`;
-      const res = await fetch(url, {
+      const res = await fetch(`${baseUrl}?action=delete&key=${encodeURIComponent(key)}`, {
         headers: getAuthHeaders(),
       });
-      const data = await parseKVResponse(res, url);
+      const data = await res.json() as KVResponse;
       if (!data.success) {
         throw new Error(data.error || 'KV delete failed');
       }
@@ -248,11 +269,10 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       if (cursor) {
         params.set('cursor', cursor);
       }
-      const url = `${baseUrl}?${params}`;
-      const res = await fetch(url, {
+      const res = await fetch(`${baseUrl}?${params}`, {
         headers: getAuthHeaders(),
       });
-      const data = await parseKVResponse(res, url);
+      const data = await res.json() as KVResponse;
       if (!data.success) {
         throw new Error(data.error || 'KV list failed');
       }
