@@ -10,7 +10,7 @@ import { ref, computed } from 'vue';
 import {
   checkPasswordComplexity,
   calculatePasswordStrength,
-} from '../utils/password-validation';
+} from '../../../utils/password-validation';
 
 // Helper to avoid TypeScript literal type comparison warnings
 const asString = (s: string): string => s;

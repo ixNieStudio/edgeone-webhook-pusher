@@ -16,7 +16,7 @@ import {
   getPasswordStrengthColor,
   getPasswordStrengthBarColor,
   PASSWORD_REQUIREMENTS,
-} from './password-validation';
+} from '../password-validation';
 
 describe('Password Validation Utilities', () => {
   describe('Unit Tests - validatePasswordComplexity', () => {
