@@ -127,7 +127,7 @@
               开始初始化
             </button>
 
-            <p v-if="hasBlockingHealthIssues" class="mt-3 text-xs text-[var(--danger-600)]">
+            <p v-if="hasBlockingHealthIssues && !healthChecking" class="mt-3 text-xs text-[var(--danger-600)]">
               当前部署检查存在阻塞项，请先完成上面的配置引导。
             </p>
           </div>
@@ -187,6 +187,10 @@
           </div>
 
           <form class="space-y-4" @submit.prevent="handleLogin">
+            <div v-if="loginBlockReason" class="alert alert-danger text-sm">
+              <Icon icon="tabler:alert-circle" class="shrink-0 text-lg" />
+              <span>{{ loginBlockReason }}</span>
+            </div>
             <div>
               <label class="block text-sm font-semibold text-[var(--text-primary)] mb-2">管理令牌</label>
               <div class="relative">
@@ -195,6 +199,7 @@
                   v-model="formData.token"
                   type="password"
                   placeholder="请输入管理令牌"
+                  :disabled="!canAttemptLogin"
                   :class="[
                     'input input-md pl-10',
                     loginError ? 'input-error' : ''
@@ -211,7 +216,7 @@
             <button
               type="submit"
               class="btn btn-lg btn-solid-primary w-full"
-              :disabled="logging"
+              :disabled="logging || !canAttemptLogin"
             >
               <Icon v-if="logging" icon="svg-spinners:ring-resize" />
               <Icon v-else icon="tabler:login" />
@@ -221,157 +226,35 @@
         </div>
       </div>
 
-      <!-- Health Check -->
-      <div class="card-glass card-md mt-6 animate-fade-in">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
-            <Icon icon="tabler:heartbeat" class="text-base" />
-            <span>健康检查</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-primary"
-              :disabled="healthChecking"
-              @click="fetchHealth"
-            >
-              <Icon v-if="healthChecking" icon="svg-spinners:ring-resize" />
-              <Icon v-else icon="tabler:refresh" />
-              刷新
-            </button>
-            <span v-if="healthChecking" class="text-xs text-[var(--text-muted)]">检查中...</span>
-            <span
-              v-else-if="healthData"
-              class="badge badge-xs"
-              :class="healthData.healthy ? 'badge-soft-success' : 'badge-soft-danger'"
-            >
-              {{ healthData.healthy ? '健康' : '异常' }}
-            </span>
-            <span v-else class="badge badge-xs badge-soft-neutral">未知</span>
-          </div>
-        </div>
+      <AuthHealthCheckPanel
+        :health-data="healthData"
+        :health-checking="healthChecking"
+        :health-error="healthError"
+        :health-env-items="healthEnvItems"
+        :health-kv-binding-items="healthKvBindingItems"
+        :health-action-items="healthActionItems"
+        :get-tone-badge-class="getToneBadgeClass"
+        :get-tone-panel-class="getTonePanelClass"
+        :get-tone-text-class="getToneTextClass"
+        :get-tone-icon="getToneIcon"
+        @refresh="handleHealthRefresh"
+      />
 
-        <div v-if="healthError" class="alert alert-danger text-xs mt-3">
-          <Icon icon="tabler:alert-circle" class="shrink-0 text-base" />
-          <span>{{ healthError }}</span>
-        </div>
+      <LegacyMigrationModal
+        :open="showLegacyMigrationModal"
+        :running="migrationRunning"
+        :error="migrationModalError"
+        :build-key="migrationKey"
+        @update:buildKey="migrationKey = $event"
+        @confirm="runMigration"
+        @close="dismissLegacyMigration"
+      />
 
-        <div v-else-if="healthData" class="mt-3 space-y-4 text-xs text-[var(--text-secondary)]">
-          <div class="flex flex-wrap items-center gap-2">
-            <span
-              class="badge badge-xs"
-              :class="healthData.ready ? 'badge-soft-success' : 'badge-soft-warning'"
-            >
-              {{ healthData.ready ? '已就绪' : '未就绪' }}
-            </span>
-            <span class="badge badge-xs badge-soft-neutral">
-              环境 {{ healthEnvItems.length }}
-            </span>
-            <span class="badge badge-xs badge-soft-neutral">
-              KV {{ healthKvBindingItems.length }}
-            </span>
-            <span>
-              错误 {{ healthData.summary.errorCount }} · 警告 {{ healthData.summary.warningCount }}
-            </span>
-          </div>
-
-          <div class="space-y-2">
-            <div class="font-medium text-[var(--text-primary)]">建议操作</div>
-            <div class="space-y-2">
-              <div
-                v-for="item in healthActionItems"
-                :key="`health-action-${item.key}`"
-                :class="['rounded-xl border p-3', getTonePanelClass(item.tone)]"
-              >
-                <div class="flex items-start gap-3">
-                  <Icon
-                    :icon="getToneIcon(item.tone)"
-                    class="mt-0.5 shrink-0 text-base"
-                    :class="getToneTextClass(item.tone)"
-                  />
-                  <div class="min-w-0 flex-1">
-                    <div class="font-medium text-[var(--text-primary)]">{{ item.title }}</div>
-                    <p class="mt-1 leading-5 text-[var(--text-secondary)]">{{ item.description }}</p>
-                    <code
-                      v-if="item.code"
-                      class="mt-2 block overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 py-2 text-[11px] mono"
-                    >
-                      {{ item.code }}
-                    </code>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <div class="font-medium text-[var(--text-primary)]">环境变量</div>
-            <div class="space-y-2">
-              <div
-                v-for="item in healthEnvItems"
-                :key="item.key"
-                :class="['rounded-xl border p-3', getTonePanelClass(item.tone)]"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0 flex-1">
-                    <div class="font-medium text-[var(--text-primary)]">{{ item.label }}</div>
-                    <p class="mt-1 leading-5 text-[var(--text-secondary)]">{{ item.description }}</p>
-                    <code
-                      v-if="item.code"
-                      class="mt-2 block overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] px-3 py-2 text-[11px] mono"
-                    >
-                      {{ item.code }}
-                    </code>
-                  </div>
-                  <span class="badge badge-xs shrink-0" :class="getToneBadgeClass(item.tone)">{{ item.statusText }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <div class="font-medium text-[var(--text-primary)]">KV 绑定</div>
-            <div class="space-y-2">
-              <div
-                v-for="item in healthKvBindingItems"
-                :key="item.key"
-                :class="['rounded-xl border p-3', getTonePanelClass(item.tone)]"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0 flex-1">
-                    <div class="font-medium text-[var(--text-primary)]">{{ item.label }}</div>
-                    <p class="mt-1 leading-5 text-[var(--text-secondary)]">{{ item.description }}</p>
-                  </div>
-                  <span class="badge badge-xs shrink-0" :class="getToneBadgeClass(item.tone)">{{ item.statusText }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="healthData.summary.errors.length || healthData.summary.warnings.length" class="space-y-3">
-            <div v-if="healthData.summary.errors.length" class="space-y-1">
-              <div class="text-[var(--danger-600)] font-medium">错误</div>
-              <ul class="list-disc list-inside space-y-0.5">
-                <li v-for="(item, index) in healthData.summary.errors" :key="`health-error-${index}`">
-                  {{ item }}
-                </li>
-              </ul>
-            </div>
-
-            <div v-if="healthData.summary.warnings.length" class="space-y-1">
-              <div class="text-[var(--warning-600)] font-medium">警告</div>
-              <ul class="list-disc list-inside space-y-0.5">
-                <li v-for="(item, index) in healthData.summary.warnings" :key="`health-warning-${index}`">
-                  {{ item }}
-                </li>
-              </ul>
-            </div>
-          </div>
-
-        </div>
-
-        <div v-else class="text-xs text-[var(--text-muted)] mt-3">无法获取健康状态</div>
-      </div>
+      <LegacyMigrationSuccessModal
+        :open="showMigrationSuccessModal"
+        :message="migrationSuccessMessage"
+        @confirm="confirmMigrationSuccess"
+      />
 
       <!-- Footer -->
       <div class="text-center mt-8">
@@ -397,6 +280,16 @@
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '~/stores/auth';
 import { showToast } from '~/composables/useToast';
+import LegacyMigrationModal from '~/components/auth/LegacyMigrationModal.vue';
+import LegacyMigrationSuccessModal from '~/components/auth/LegacyMigrationSuccessModal.vue';
+import AuthHealthCheckPanel from '~/components/auth/AuthHealthCheckPanel.vue';
+import type {
+  HealthDisplayItem,
+  HealthGuideItem,
+  HealthResponse,
+  HealthTone,
+  MigrationHealthResponse,
+} from '~/types';
 
 definePageMeta({
   layout: 'auth',
@@ -415,6 +308,16 @@ const loginError = ref('');
 const healthChecking = ref(true);
 const healthError = ref('');
 const healthData = ref<HealthResponse | null>(null);
+const migrationChecking = ref(false);
+const migrationError = ref('');
+const migrationHealth = ref<MigrationHealthResponse | null>(null);
+const migrationKey = ref('');
+const migrationRunning = ref(false);
+const migrationActionError = ref('');
+const migrationModalError = computed(() => migrationActionError.value || migrationError.value);
+const migrationSuccessMessage = ref('');
+const showMigrationSuccessModal = computed(() => migrationSuccessMessage.value !== '');
+const LEGACY_KV_NAMES = ['CONFIG_KV', 'CHANNELS_KV', 'APPS_KV', 'OPENIDS_KV', 'MESSAGES_KV'];
 
 const formData = reactive({
   token: '',
@@ -422,17 +325,28 @@ const formData = reactive({
 
 onMounted(async () => {
   auth.init();
-  
+
+  const healthOk = await fetchHealth();
+  if (!healthOk) {
+    const wasLoggedIn = auth.isLoggedIn;
+    auth.logout();
+    if (wasLoggedIn) {
+      loginError.value = '健康检查未通过，已退出登录';
+    }
+    checking.value = false;
+    return;
+  }
+
   if (auth.isLoggedIn) {
     router.push('/');
     return;
   }
 
-  void fetchHealth();
+  await fetchMigrationHealth();
 
   const res = await api.getInitStatus();
   checking.value = false;
-  
+
   if (res.code === 0 && res.data) {
     isInitialized.value = res.data.initialized;
   }
@@ -454,7 +368,10 @@ async function handleInit() {
     showToast('初始化失败，请重试', 'error');
   } finally {
     initializing.value = false;
-    void fetchHealth();
+    const healthOk = await fetchHealth();
+    if (healthOk) {
+      await fetchMigrationHealth();
+    }
   }
 }
 
@@ -469,6 +386,10 @@ function confirmAndLogin() {
 }
 
 async function handleLogin() {
+  if (!canAttemptLogin.value) {
+    loginError.value = loginBlockReason.value || '健康检查未通过，暂不可登录';
+    return;
+  }
   if (!formData.token.trim()) {
     loginError.value = '请输入管理令牌';
     return;
@@ -493,71 +414,23 @@ async function handleLogin() {
   }
 }
 
-interface HealthSummary {
-  healthy: boolean;
-  ready: boolean;
-  errorCount: number;
-  warningCount: number;
-  errors: string[];
-  warnings: string[];
-}
-
-interface HealthResponse {
-  success: boolean;
-  healthy: boolean;
-  ready: boolean;
-  timestamp?: string;
-  summary: HealthSummary;
-  env: {
-    BUILD_KEY: HealthEnvCheck;
-    KV_BASE_URL: HealthEnvCheck;
-  };
-  kv: {
-    bindings: Record<string, HealthKvBinding>;
-  };
-}
-
-interface HealthEnvCheck {
-  required: boolean;
-  present: boolean;
-  ok: boolean;
-  length?: number;
-  value?: string | null;
-}
-
-interface HealthKvBinding {
-  ok: boolean;
-  configured: boolean;
-  readable: boolean;
-  methods: {
-    get: boolean;
-    put: boolean;
-    delete: boolean;
-    list: boolean;
-  };
-  error?: string;
-}
-
-type HealthTone = 'success' | 'warning' | 'danger' | 'neutral';
-
-interface HealthDisplayItem {
-  key: string;
-  label: string;
-  tone: HealthTone;
-  statusText: string;
-  description: string;
-  code?: string;
-}
-
-interface HealthGuideItem {
-  key: string;
-  title: string;
-  tone: HealthTone;
-  description: string;
-  code?: string;
-}
-
-const hasBlockingHealthIssues = computed(() => Boolean(healthData.value) && !healthData.value.healthy);
+const hasBlockingHealthIssues = computed(() => !healthData.value?.healthy);
+const canAttemptLogin = computed(() => healthData.value?.healthy === true);
+const loginBlockReason = computed(() => {
+  if (healthChecking.value) {
+    return '';
+  }
+  if (canAttemptLogin.value) {
+    return '';
+  }
+  if (healthError.value) {
+    return healthError.value;
+  }
+  if (healthData.value) {
+    return '部署健康检查未通过，请先修复后再登录。';
+  }
+  return '健康检查未通过，暂不可登录。';
+});
 
 const healthEnvItems = computed<HealthDisplayItem[]>(() => {
   const data = healthData.value;
@@ -567,7 +440,7 @@ const healthEnvItems = computed<HealthDisplayItem[]>(() => {
   const kvBaseUrlTone: HealthTone = kvBaseUrl.present ? 'success' : 'danger';
   const kvBaseUrlStatus = kvBaseUrl.present ? '已配置' : '缺失';
   const kvBaseUrlDescription = !kvBaseUrl.present
-    ? '未配置站点基准地址，Node Functions 将无法通过 /api/kv/* 访问 KV。'
+    ? '未配置站点基准地址，Node Functions 将无法通过 /api/kv/new-kv 访问 KV。'
     : `当前值为 ${kvBaseUrl.value}。`;
 
   return [
@@ -655,7 +528,7 @@ const healthActionItems = computed<HealthGuideItem[]>(() => {
       key: 'action-kv-base-url',
       title: '配置 KV_BASE_URL',
       tone: 'danger',
-      description: 'Node Functions 需要通过这个域名访问 /api/kv/*。请填写当前站点对外可访问的域名。',
+      description: 'Node Functions 需要通过这个域名访问 /api/kv/new-kv。请填写当前站点对外可访问的域名。',
       code: 'KV_BASE_URL=https://your-domain.com',
     });
   }
@@ -692,6 +565,71 @@ const healthActionItems = computed<HealthGuideItem[]>(() => {
 
   return items;
 });
+
+const legacyMigrationDismissed = ref(false);
+const showLegacyMigrationModal = computed(() => {
+  const hasLegacy = Boolean(migrationHealth.value?.legacy?.hasData);
+  return hasLegacy && !legacyMigrationDismissed.value;
+});
+
+function dismissLegacyMigration() {
+  legacyMigrationDismissed.value = true;
+  migrationKey.value = '';
+  migrationActionError.value = '';
+}
+
+function confirmMigrationSuccess() {
+  migrationSuccessMessage.value = '';
+  window.location.reload();
+}
+
+async function runMigration() {
+  migrationActionError.value = '';
+  const trimmedKey = migrationKey.value.trim();
+  if (!trimmedKey) {
+    migrationActionError.value = '请输入 BUILD_KEY 以开始迁移';
+    return;
+  }
+  const healthOk = await fetchHealth();
+  if (!healthOk) {
+    migrationActionError.value = '健康检查未通过，无法执行迁移';
+    return;
+  }
+
+  migrationRunning.value = true;
+  try {
+    const res = await fetch('/api/kv/migrate', {
+      method: 'POST',
+      headers: {
+        'X-Internal-Key': trimmedKey,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`迁移请求失败 (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (!data || data.success !== true) {
+      throw new Error(data?.error || '迁移响应异常');
+    }
+
+    await fetchMigrationHealth();
+
+    if (migrationHealth.value?.legacy?.hasData) {
+      showToast('迁移完成，但仍检测到旧数据，请确认后再试', 'warning');
+    } else {
+      const kvList = LEGACY_KV_NAMES.join('、');
+      migrationSuccessMessage.value = `迁移完成，可解绑以下 KV：${kvList}`;
+      legacyMigrationDismissed.value = true;
+      migrationKey.value = '';
+    }
+  } catch (error) {
+    migrationActionError.value = error instanceof Error ? error.message : '迁移失败，请重试';
+  } finally {
+    migrationRunning.value = false;
+  }
+}
 
 function getToneBadgeClass(tone: HealthTone) {
   switch (tone) {
@@ -750,6 +688,8 @@ async function fetchHealth() {
   healthError.value = '';
   healthData.value = null;
 
+  let healthOk = false;
+
   try {
     const res = await fetch('/api/health', {
       headers: {
@@ -768,10 +708,66 @@ async function fetchHealth() {
     }
 
     healthData.value = data as HealthResponse;
+    healthOk = Boolean(healthData.value?.healthy);
   } catch (error) {
     healthError.value = error instanceof Error ? error.message : '健康检查失败';
   } finally {
     healthChecking.value = false;
+  }
+
+  if (!healthOk) {
+    migrationHealth.value = null;
+    migrationError.value = '';
+    legacyMigrationDismissed.value = true;
+  }
+
+  return healthOk;
+}
+
+async function fetchMigrationHealth() {
+  if (!healthData.value?.healthy) {
+    migrationHealth.value = null;
+    migrationError.value = '';
+    return;
+  }
+  migrationChecking.value = true;
+  migrationError.value = '';
+  migrationHealth.value = null;
+
+  try {
+    const res = await fetch('/api/health-migration', {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error(`迁移检查失败 (${res.status})`);
+    }
+
+    const data = await res.json();
+    if (!data || data.success !== true) {
+      throw new Error(data?.error || '迁移检查响应异常');
+    }
+
+    migrationHealth.value = data as MigrationHealthResponse;
+    if (migrationHealth.value?.legacy?.hasData) {
+      legacyMigrationDismissed.value = false;
+      migrationActionError.value = '';
+    }
+  } catch (error) {
+    migrationError.value = error instanceof Error ? error.message : '迁移检查失败';
+  } finally {
+    migrationChecking.value = false;
+  }
+}
+
+async function handleHealthRefresh() {
+  const healthOk = await fetchHealth();
+  if (healthOk) {
+    await fetchMigrationHealth();
+  } else {
+    migrationHealth.value = null;
   }
 }
 </script>

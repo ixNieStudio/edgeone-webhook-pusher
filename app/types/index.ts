@@ -31,3 +31,6 @@ export * from './demo-app';
 
 // BindCode 绑定码
 export * from './bindcode';
+
+// Health check types
+export * from './health';
