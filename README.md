@@ -1,4 +1,10 @@
-# EdgeOne Webhook Pusher
+<p align="center">
+  <img src="docs/imgs/logo.png" alt="EdgeOne Webhook Pusher" width="240" />
+</p>
+
+<h1 align="center">EdgeOne Webhook Pusher</h1>
+
+<p align="center">基于 EdgeOne 边缘能力的消息推送服务</p>
 
 > 🚀 **0成本自建微信推送** - 白嫖EdgeOne + 微信测试号，5分钟部署专属推送服务
 
@@ -83,13 +89,115 @@
 1. 点击顶部「Deploy to EdgeOne」按钮，登录EdgeOne账号
 2. 绑定5个KV命名空间：`CONFIG_KV`、`CHANNELS_KV`、`APPS_KV`、`OPENIDS_KV`、`MESSAGES_KV`
 3. 配置构建参数（Root: `/`，Output: `dist`，Build: `yarn build`）
-4. **⚠️ 重要：配置环境变量**
-   - 在 EdgeOne 项目设置中添加环境变量：
-   - `KV_BASE_URL=https://your-custom-domain.com`（替换为你的自定义域名）
+4. **⚠️ 重要：创建项目时就配置环境变量**
+   - `KV_BASE_URL=https://your-custom-domain.com`
    - 如果使用 EdgeOne 默认域名，则设置为：`KV_BASE_URL=https://your-project.edgeone.cool`
+   - `BUILD_KEY=<复杂口令，建议至少 20 位，包含大小写、数字、符号>`
+
+**BUILD_KEY 设置建议：**
+
+- 不要求 64 位十六进制
+- 系统运行时只要求它非空，且 Node Functions 与 Edge Functions 配置完全一致
+- 出于安全考虑，仍建议使用难猜的复杂口令
 
 > 💡 **为什么需要配置 KV_BASE_URL？**  
 > EdgeOne Node Functions 需要通过 Edge Functions 访问 KV 存储。直接访问 `/send/*` 接口时，系统无法自动检测到公共域名，必须手动配置环境变量指定完整的域名地址。
+
+> 💡 **为什么必须配置 BUILD_KEY？**  
+> Node Functions 通过 `/api/kv/*` 访问 Edge Functions 中转层，Edge Functions 会校验 `X-Internal-Key`。本项目已统一改为只使用环境变量，不再在构建时生成或注入内部密钥文件。为降低配置门槛，运行时不再限制必须是 64 位十六进制，只要求两端一致。
+
+### 环境变量说明
+
+| 变量名 | 必填 | 用途 |
+|--------|------|------|
+| `KV_BASE_URL` | 是 | Node Functions 访问站点公开域名 |
+| `BUILD_KEY` | 是 | Node Functions 与 Edge Functions 共用的内部鉴权密钥 |
+
+### 部署校验
+
+部署完成后，先检查健康接口：
+
+```bash
+curl https://your-domain.com/api/health
+```
+
+正常情况下你应该看到：
+
+```json
+{
+  "success": true,
+  "healthy": true,
+  "ready": true,
+  "requestOrigin": "https://your-domain.com",
+  "hasBuildKeyEnv": true,
+  "summary": {
+    "errorCount": 0,
+    "warningCount": 0
+  },
+  "env": {
+    "BUILD_KEY": {
+      "present": true,
+      "ok": true
+    },
+    "KV_BASE_URL": {
+      "present": true,
+      "ok": true,
+      "matchesRequestOrigin": true
+    }
+  },
+  "kv": {
+    "systemConfig": {
+      "initialized": true
+    }
+  },
+  "routes": {
+    "kvProxy": {
+      "ok": true
+    },
+    "nodeInitStatus": {
+      "ok": true,
+      "initialized": true
+    }
+  }
+}
+```
+
+`/api/health` 现在会同时检查：
+
+- 必填环境变量是否齐全：`BUILD_KEY`、`KV_BASE_URL`
+- 5 个 KV 绑定是否存在且可读
+- `CONFIG_KV` 中的系统配置是否已初始化
+- ` /api/kv/config ` 代理路由是否正常
+- ` /v1/init/status ` Node Functions 端到端链路是否正常
+
+常见判定：
+
+- `healthy=false`：说明部署配置或运行链路有硬错误，优先看 `summary.errors`
+- `ready=false` 且 `healthy=true`：通常说明系统还没初始化，例如 `config` 尚未写入 `CONFIG_KV`
+- `env.KV_BASE_URL.matchesRequestOrigin=false`：说明当前访问域名和配置的 `KV_BASE_URL` 不是同一个，适合作为诊断提示，不一定是故障
+
+### Initialization guide
+
+The Node Functions layer exposes a light-weight initialization flow that must run once before the admin UI accepts logins. The UI (see `app/stores/auth.ts`) calls the same endpoints so that it can automatically show the setup screen on a fresh deployment.
+
+1. **Check status**: `GET /v1/init/status` returns `{ "initialized": false }` until the system is primed.
+2. **Run the initializer once**:
+   ```bash
+   curl -X POST https://your-domain.com/v1/init
+   ```
+   The response payload looks like:
+   ```json
+   {
+     "code": 0,
+     "message": "Initialization successful. Please save your Admin Token securely.",
+     "data": {
+       "adminToken": "deploy-generated-admin-token"
+     }
+   }
+   ```
+3. **Store the Admin Token** securely. The token can be pasted into the login page or included as `Authorization: Bearer <token>` when calling admin-only routes. The SPA keeps the token in `localStorage` after login.
+
+Once initialization completes, `/v1/init/status` flips to `{ "initialized": true }`, and the one-time setup screen disappears. The endpoint refuses repeated initialization attempts, so keep the admin token safe.
 
 ### 使用流程
 
