@@ -1,7 +1,4 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
-import { randomBytes } from 'crypto';
-import { resolve } from 'path';
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -46,55 +43,6 @@ export default defineNuxtConfig({
     },
   },
 
-  hooks: {
-    'nitro:build:public-assets': () => {
-      const rootDir = process.cwd();
-      const distDir = resolve(rootDir, 'dist');
-      const runtimeKey = randomBytes(32).toString('hex');
-      const keyPattern = /const BUILD_KEY = ['"]([a-f0-9]{64}|__BUILD_KEY_PLACEHOLDER__)['"];?/g;
-
-      // 复制 Node Functions 到 dist/，确保部署产物包含 /v1/* 路由
-      cpSync(resolve(rootDir, 'node-functions'), resolve(distDir, 'node-functions'), { recursive: true });
-      console.log('✓ Copied node-functions to dist/');
-
-      // 复制 Edge Functions 到 dist/，确保部署产物包含 /api/* 路由
-      cpSync(resolve(rootDir, 'edge-functions'), resolve(distDir, 'edge-functions'), { recursive: true });
-      console.log('✓ Copied edge-functions to dist/');
-
-      // 将动态 key 写入 dist/shared/internal-key.json（不修改源码）
-      const sharedDir = resolve(distDir, 'shared');
-      mkdirSync(sharedDir, { recursive: true });
-      writeFileSync(
-        resolve(sharedDir, 'internal-key.json'),
-        JSON.stringify(
-          {
-            buildKey: runtimeKey,
-            generatedAt: new Date().toISOString(),
-          },
-          null,
-          2
-        )
-      );
-      console.log('✓ Generated dist/shared/internal-key.json');
-
-      // 注入动态 key 到 dist/edge-functions（不修改源码）
-      const kvDir = resolve(distDir, 'edge-functions', 'api', 'kv');
-      if (!existsSync(kvDir)) {
-        throw new Error(`KV functions directory not found: ${kvDir}`);
-      }
-
-      const kvFiles = readdirSync(kvDir).filter((file) => file.endsWith('.js'));
-      for (const file of kvFiles) {
-        const filePath = resolve(kvDir, file);
-        const content = readFileSync(filePath, 'utf-8');
-        keyPattern.lastIndex = 0;
-        const replaced = content.replace(keyPattern, `const BUILD_KEY = '${runtimeKey}';`);
-        writeFileSync(filePath, replaced);
-      }
-      console.log(`✓ Injected runtime BUILD_KEY into dist edge-functions (${kvFiles.length} files)`);
-    },
-  },
-
   css: ['~/assets/css/main.css'],
 
   modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
@@ -125,6 +73,12 @@ export default defineNuxtConfig({
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'Serverless webhook push service' },
+        { name: 'theme-color', content: '#1677ff' },
+      ],
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/png', href: '/favicon.png' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
       ],
     },
   },

@@ -23,14 +23,14 @@
     "dev:node": "tsx scripts/dev-server.ts",
     "dev:edgeone": "edgeone pages dev",
     "build": "nuxt generate",
+    "postbuild": "tsx scripts/verify-edge-functions.ts",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "rimraf dist .nuxt .output",
     "typecheck": "tsc -p node-functions/tsconfig.json --noEmit",
-    "generate:openapi": "tsx scripts/generate-openapi.ts",
-    "generate:key": "tsx scripts/generate-internal-key.ts"
+    "generate:openapi": "tsx scripts/generate-openapi.ts"
   },
   "dependencies": {
     "@iconify/vue": "^4.3.0",

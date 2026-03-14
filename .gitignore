@@ -32,9 +32,6 @@ yarn-error.log*
 # AI Coding Tools (kept in private dev repo, excluded from public repo)
 # These files are committed here but filtered out when syncing to public
 
-# Security
-shared/internal-key.json
-
 # Added by Spec Kitty CLI (auto-managed)
 .claude/
 .codex/

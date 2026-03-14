@@ -5,7 +5,7 @@
  * - 前端 (Nuxt) → 本地 Node Functions → 远程 Edge Functions KV API
  * 
  * 使用方式：
- * 1. 配置 .env.local 中的 KV_BASE_URL 和 INTERNAL_DEBUG_KEY
+ * 1. 配置 .env.local 中的 KV_BASE_URL 和 BUILD_KEY
  * 2. 运行 yarn dev:node 启动此服务器
  * 3. 运行 yarn dev 启动前端（会自动代理到此服务器）
  * 

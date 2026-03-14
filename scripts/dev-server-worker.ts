@@ -37,12 +37,12 @@ async function start() {
   const server = createServer(app.callback());
   
   server.listen(PORT, () => {
-    const hasDebugKey = !!process.env.INTERNAL_DEBUG_KEY;
+    const hasInternalKey = !!process.env.BUILD_KEY;
     const kvUrl = process.env.KV_BASE_URL || '(未配置，使用同源)';
     
     console.log(`${c.dim}   地址: ${c.reset}${c.cyan}http://localhost:${PORT}${c.reset}`);
     console.log(`${c.dim}   KV_BASE_URL:${c.reset} ${c.yellow}${kvUrl}${c.reset}`);
-    console.log(`${c.dim}   INTERNAL_DEBUG_KEY:${c.reset} ${hasDebugKey ? `${c.green}已配置 ✓${c.reset}` : `${c.red}未配置 ✗${c.reset}`}`);
+    console.log(`${c.dim}   BUILD_KEY:${c.reset} ${hasInternalKey ? `${c.green}已配置 ✓${c.reset}` : `${c.red}未配置 ✗${c.reset}`}`);
     console.log('');
     console.log(`${c.green}✓${c.reset} 服务器已启动`);
     console.log(`${c.blue}💡 提示:${c.reset} 在另一个终端运行 ${c.cyan}yarn dev${c.reset} 启动前端`);
