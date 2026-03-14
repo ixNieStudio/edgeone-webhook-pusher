@@ -79,12 +79,24 @@ edgeone pages link
 按提示选择项目，CLI 会自动关联 KV 命名空间。
 
 #### KV 命名空间
-项目使用以下 KV 命名空间（需在 EdgeOne 控制台配置）：
-- `CONFIG_KV` - 系统配置
-- `SENDKEYS_KV` - SendKey 数据
-- `TOPICS_KV` - Topic 数据
-- `OPENIDS_KV` - OpenID 数据
-- `MESSAGES_KV` - 消息历史
+项目使用单一 KV 命名空间（需在 EdgeOne 控制台配置）：
+- `PUSHER_KV` - 统一存储（使用 `config:` / `channels:` / `apps:` / `openids:` / `messages:` 前缀隔离数据）
+
+#### 旧 KV 迁移
+如果历史版本仍使用多个 KV 命名空间，部署新版后可以通过迁移接口完成数据迁移：
+
+```bash
+BUILD_KEY=Your-Strong-Passphrase KV_BASE_URL=https://your-domain.com \
+  curl -X POST "$KV_BASE_URL/api/kv/migrate" -H "X-Internal-Key: $BUILD_KEY"
+```
+
+> 迁移只会同步最近 50 条消息历史，并重建对应索引。
+
+如需检查是否仍存在旧 KV 数据，可访问：
+
+```bash
+curl https://your-domain.com/api/health-migration
+```
 
 ## API 测试
 

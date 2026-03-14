@@ -87,7 +87,7 @@
 ### 方式2：一键部署（5分钟）
 
 1. 点击顶部「Deploy to EdgeOne」按钮，登录EdgeOne账号
-2. 绑定5个KV命名空间：`CONFIG_KV`、`CHANNELS_KV`、`APPS_KV`、`OPENIDS_KV`、`MESSAGES_KV`
+2. 绑定1个KV命名空间：`PUSHER_KV`
 3. 配置构建参数（Root: `/`，Output: `dist`，Build: `yarn build`）
 4. **⚠️ 重要：创建项目时就配置环境变量**
    - `KV_BASE_URL=https://your-custom-domain.com`
@@ -104,7 +104,7 @@
 > EdgeOne Node Functions 需要通过 Edge Functions 访问 KV 存储。直接访问 `/send/*` 接口时，系统无法自动检测到公共域名，必须手动配置环境变量指定完整的域名地址。
 
 > 💡 **为什么必须配置 BUILD_KEY？**  
-> Node Functions 通过 `/api/kv/*` 访问 Edge Functions 中转层，Edge Functions 会校验 `X-Internal-Key`。本项目已统一改为只使用环境变量，不再在构建时生成或注入内部密钥文件。为降低配置门槛，运行时不再限制必须是 64 位十六进制，只要求两端一致。
+> Node Functions 通过 `/api/kv/new-kv` 访问 Edge Functions 中转层，Edge Functions 会校验 `X-Internal-Key`。本项目已统一改为只使用环境变量，不再在构建时生成或注入内部密钥文件。为降低配置门槛，运行时不再限制必须是 64 位十六进制，只要求两端一致。
 
 ### 环境变量说明
 
@@ -165,39 +165,35 @@ curl https://your-domain.com/api/health
 `/api/health` 现在会同时检查：
 
 - 必填环境变量是否齐全：`BUILD_KEY`、`KV_BASE_URL`
-- 5 个 KV 绑定是否存在且可读
-- `CONFIG_KV` 中的系统配置是否已初始化
-- ` /api/kv/config ` 代理路由是否正常
+- 1 个 KV 绑定是否存在且可读（`PUSHER_KV`）
+- `PUSHER_KV` 中的系统配置是否已初始化（`config:config`）
+- ` /api/kv/new-kv ` 代理路由是否正常
 - ` /v1/init/status ` Node Functions 端到端链路是否正常
+
+如需检查旧 KV 迁移状态，请调用：
+
+```bash
+curl https://your-domain.com/api/health-migration
+```
 
 常见判定：
 
 - `healthy=false`：说明部署配置或运行链路有硬错误，优先看 `summary.errors`
-- `ready=false` 且 `healthy=true`：通常说明系统还没初始化，例如 `config` 尚未写入 `CONFIG_KV`
+- `ready=false` 且 `healthy=true`：通常说明系统还没初始化，例如 `config:config` 尚未写入 `PUSHER_KV`
 - `env.KV_BASE_URL.matchesRequestOrigin=false`：说明当前访问域名和配置的 `KV_BASE_URL` 不是同一个，适合作为诊断提示，不一定是故障
 
-### Initialization guide
+### KV 迁移（从旧版升级）
 
-The Node Functions layer exposes a light-weight initialization flow that must run once before the admin UI accepts logins. The UI (see `app/stores/auth.ts`) calls the same endpoints so that it can automatically show the setup screen on a fresh deployment.
+如果你的旧版本仍使用 5 个 KV 命名空间，请先部署当前版本（同时具备新旧 KV 代理），然后执行一次性迁移：
 
-1. **Check status**: `GET /v1/init/status` returns `{ "initialized": false }` until the system is primed.
-2. **Run the initializer once**:
-   ```bash
-   curl -X POST https://your-domain.com/v1/init
-   ```
-   The response payload looks like:
-   ```json
-   {
-     "code": 0,
-     "message": "Initialization successful. Please save your Admin Token securely.",
-     "data": {
-       "adminToken": "deploy-generated-admin-token"
-     }
-   }
-   ```
-3. **Store the Admin Token** securely. The token can be pasted into the login page or included as `Authorization: Bearer <token>` when calling admin-only routes. The SPA keeps the token in `localStorage` after login.
+```bash
+BUILD_KEY=Your-Strong-Passphrase KV_BASE_URL=https://your-domain.com \
+  curl -X POST "$KV_BASE_URL/api/kv/migrate" -H "X-Internal-Key: $BUILD_KEY"
+```
 
-Once initialization completes, `/v1/init/status` flips to `{ "initialized": true }`, and the one-time setup screen disappears. The endpoint refuses repeated initialization attempts, so keep the admin token safe.
+> 迁移只会同步最近 50 条消息历史，并重建对应索引。
+
+迁移完成后，可在 EdgeOne 控制台解绑旧的 KV 命名空间，仅保留 `PUSHER_KV`。
 
 ### 使用流程
 
