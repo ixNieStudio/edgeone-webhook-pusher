@@ -2,8 +2,10 @@
 // Path: /api/kv/openids
 // KV Binding: OPENIDS_KV (configured in EdgeOne Pages)
 
-// BUILD_KEY 在构建时被替换为实际值
-const BUILD_KEY = '__BUILD_KEY_PLACEHOLDER__';
+function getConfiguredBuildKey(env) {
+  const key = env?.BUILD_KEY;
+  return typeof key === 'string' ? key.trim() : '';
+}
 
 /**
  * 验证内部 API 密钥
@@ -12,16 +14,10 @@ const BUILD_KEY = '__BUILD_KEY_PLACEHOLDER__';
  * @returns {boolean} 是否有效
  */
 function isValidKey(key, env) {
-  if (!key) return false;
-
-  // Build Key 验证
-  if (key === BUILD_KEY) return true;
-
-  // Debug Key 验证（如果配置）
-  const debugKey = env?.INTERNAL_DEBUG_KEY;
-  if (debugKey && debugKey.length === 64 && key === debugKey) return true;
-
-  return false;
+  const envBuildKey = getConfiguredBuildKey(env);
+  if (envBuildKey === '') return false;
+  if (typeof key !== 'string' || key.length === 0) return false;
+  return key === envBuildKey;
 }
 
 /**

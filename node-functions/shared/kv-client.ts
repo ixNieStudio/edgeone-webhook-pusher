@@ -8,15 +8,13 @@
  * 
  * 安全说明：
  * 所有请求都需要携带 X-Internal-Key header 进行认证
- * 优先使用环境变量 INTERNAL_DEBUG_KEY（本地调试），否则使用构建时生成的密钥
+ * 统一使用 BUILD_KEY 环境变量提供密钥
+ * - 口令格式不做运行时校验，只要求非空且两端保持一致
  * 
  * 优先使用环境变量 KV_BASE_URL，生产环境留空使用同源请求
  */
 
 import { AsyncLocalStorage } from 'async_hooks';
-import { existsSync, readFileSync } from 'fs';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
 
 interface KVRequestContext {
   baseUrl: string;
@@ -28,37 +26,14 @@ interface KVRequestContext {
 
 // AsyncLocalStorage for storing per-request KV context
 const asyncLocalStorage = new AsyncLocalStorage<KVRequestContext>();
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
-let cachedBuildKey: string | null | undefined;
-
-/**
- * 尝试从 shared/internal-key.json 读取构建时密钥（可选）
- */
-function getBuildKeyFromFile(): string | null {
-  if (cachedBuildKey !== undefined) {
-    return cachedBuildKey;
+function getEnvInternalKey(): string | null {
+  const key = process.env.BUILD_KEY;
+  if (typeof key === 'string' && key.trim().length > 0) {
+    return key;
   }
 
-  const keyPath = resolve(__dirname, '../../shared/internal-key.json');
-  if (!existsSync(keyPath)) {
-    cachedBuildKey = null;
-    return cachedBuildKey;
-  }
-
-  try {
-    const raw = readFileSync(keyPath, 'utf-8');
-    const parsed = JSON.parse(raw) as { buildKey?: string };
-    if (parsed.buildKey && /^[a-f0-9]{64}$/.test(parsed.buildKey)) {
-      cachedBuildKey = parsed.buildKey;
-      return cachedBuildKey;
-    }
-  } catch (error) {
-    console.warn('[KV Client] Failed to read shared/internal-key.json:', error);
-  }
-
-  cachedBuildKey = null;
-  return cachedBuildKey;
+  return null;
 }
 
 /**
@@ -115,21 +90,16 @@ function getBaseUrl(): string {
 
 /**
  * 获取内部 API 密钥
- * 优先使用调试密钥（本地开发），否则使用构建时生成的密钥
+ * 统一从 BUILD_KEY 环境变量读取
+ * - 只要求密钥非空，不限制具体格式
  */
 export function getInternalKey(): string {
-  // 优先使用调试密钥（本地开发时通过 .env.local 配置）
-  if (process.env.INTERNAL_DEBUG_KEY) {
-    return process.env.INTERNAL_DEBUG_KEY;
+  const envKey = getEnvInternalKey();
+  if (envKey) {
+    return envKey;
   }
 
-  // 回退：使用构建时生成的密钥（如果存在）
-  const buildKey = getBuildKeyFromFile();
-  if (buildKey) {
-    return buildKey;
-  }
-
-  throw new Error('Missing internal key: set INTERNAL_DEBUG_KEY env or provide shared/internal-key.json');
+  throw new Error('Missing internal key: set BUILD_KEY env');
 }
 
 /**
