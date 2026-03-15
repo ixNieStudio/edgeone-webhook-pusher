@@ -264,7 +264,7 @@ async function saveInboundMessage(params: {
       event: params.event,
       createdAt: new Date().toISOString(),
     };
-    await messageService.saveMessage(message, { skipIndexes: true });
+    await messageService.saveMessage(message);
   } catch (error) {
     // 保存失败不影响消息处理
     if (process.env.DEBUG_KV_URL === 'true') {

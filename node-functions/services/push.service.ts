@@ -117,7 +117,7 @@ class PushService {
       results: result.results,
       createdAt,
     };
-    void messageService.saveMessage(messageRecord, { skipIndexes: true }).catch((error) => {
+    void messageService.saveMessage(messageRecord).catch((error) => {
       // 日志落盘失败不影响主流程
       if (process.env.DEBUG_KV_URL === 'true') {
         console.error('[PushService] Failed to save message record:', error);

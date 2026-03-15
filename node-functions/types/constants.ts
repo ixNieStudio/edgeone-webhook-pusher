@@ -46,7 +46,13 @@ export const KVKeys = {
   MESSAGE_PREFIX: 'msg:',
   MESSAGE: (id: string) => `msg:${id}`,
   MESSAGE_LIST: 'msg_list',
+  MESSAGE_CHANNEL_PREFIX: 'msg_channel:',
+  MESSAGE_CHANNEL: (channelId: string) => `msg_channel:${channelId}`,
+  MESSAGE_APP_PREFIX: 'msg_app:',
   MESSAGE_APP: (appId: string) => `msg_app:${appId}`,
+  MESSAGE_OPENID_PREFIX: 'msg_openid:',
+  MESSAGE_OPENID: (openId: string) => `msg_openid:${openId}`,
+  MESSAGE_INDEX_META: 'msg_index_meta',
   WECHAT_TOKEN: (appId: string) => `wechat_token:${appId}`,
 } as const;
 

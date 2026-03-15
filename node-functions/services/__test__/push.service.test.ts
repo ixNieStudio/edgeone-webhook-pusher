@@ -196,6 +196,14 @@ describe('PushService Integration Tests', () => {
 
       // 8. 验证消息历史已保存
       expect(mockMessageService.saveMessage).toHaveBeenCalledTimes(1);
+      expect(mockMessageService.saveMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: result.pushId,
+          direction: 'outbound',
+          appId: app.id,
+          channelId: channel.id,
+        })
+      );
     });
 
     it('应该成功发送微信模板消息（订阅模式）', async () => {
