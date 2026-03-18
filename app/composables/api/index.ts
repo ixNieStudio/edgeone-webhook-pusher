@@ -5,8 +5,6 @@
 export { useRequest } from './useRequest';
 export { useInitApi } from './useInitApi';
 export { useConfigApi } from './useConfigApi';
-export { useChannelApi } from './useChannelApi';
 export { useAppApi } from './useAppApi';
-export { useOpenIdApi } from './useOpenIdApi';
+export { useAuthProfileApi } from './useAuthProfileApi';
 export { useMessageApi } from './useMessageApi';
-export { useStatsApi } from './useStatsApi';

@@ -2,8 +2,8 @@
  * Message API
  */
 
-import type { ApiResponse, Message } from '~/types';
-import type { PaginatedResponse, MessageQueryParams } from '~/types/frontend';
+import type { ApiResponse } from '~/types';
+import type { MessageDetailView, MessageQueryParams, MessageWorkspaceResponse } from '~/types';
 import { useRequest } from './useRequest';
 
 export function useMessageApi() {
@@ -12,7 +12,7 @@ export function useMessageApi() {
   /**
    * 获取消息历史列表
    */
-  function getMessages(params?: MessageQueryParams): Promise<ApiResponse<PaginatedResponse<Message>>> {
+  function getMessages(params?: MessageQueryParams): Promise<ApiResponse<MessageWorkspaceResponse>> {
     const query = new URLSearchParams();
     if (params?.page) query.set('page', String(params.page));
     if (params?.pageSize) query.set('pageSize', String(params.pageSize));
@@ -24,14 +24,14 @@ export function useMessageApi() {
     if (params?.endDate) query.set('endDate', params.endDate);
 
     const queryStr = query.toString();
-    return get<PaginatedResponse<Message>>(`/messages${queryStr ? `?${queryStr}` : ''}`);
+    return get<MessageWorkspaceResponse>(`/messages${queryStr ? `?${queryStr}` : ''}`);
   }
 
   /**
    * 获取消息详情
    */
-  function getMessage(id: string): Promise<ApiResponse<Message>> {
-    return get<Message>(`/messages/${id}`);
+  function getMessage(id: string): Promise<ApiResponse<MessageDetailView>> {
+    return get<MessageDetailView>(`/messages/${id}`);
   }
 
   return {

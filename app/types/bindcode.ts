@@ -17,3 +17,13 @@ export interface BindCodeStatusResponse {
   nickname?: string;
   avatar?: string;
 }
+
+export interface BindCodeViewState {
+  code: string;
+  status: BindCodeStatus;
+  expiresAt?: number;
+  qrCodeUrl?: string;
+  openId?: string;
+  nickname?: string;
+  avatar?: string;
+}

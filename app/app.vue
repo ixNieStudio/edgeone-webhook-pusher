@@ -3,8 +3,7 @@
     <NuxtLayout>
       <NuxtPage />
     </NuxtLayout>
-    <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="toast-container" class="fixed right-4 top-4 z-50 space-y-2" />
   </div>
 </template>
 
@@ -12,11 +11,14 @@
 import { useAuthStore } from '~/stores/auth';
 
 const { init: initTheme } = useTheme();
+const auth = useAuthStore();
+
+if (import.meta.client) {
+  initTheme();
+}
 
 onMounted(() => {
-  const auth = useAuthStore();
   auth.init();
-  initTheme();
 });
 </script>
 

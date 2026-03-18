@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex bg-default">
+  <div class="min-h-screen">
     <slot />
   </div>
 </template>

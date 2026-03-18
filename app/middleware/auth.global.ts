@@ -10,6 +10,7 @@ import { useAuthStore } from '~/stores/auth';
 // API 和公开路径白名单 - 这些路径不需要认证
 const PUBLIC_PATHS = [
   '/admin/login',
+  '/open/',
   '/bind-',
   '/subscribe-',
 ];
@@ -30,14 +31,6 @@ export default defineNuxtRouteMiddleware((to) => {
 
   // Skip auth check for public pages
   if (PUBLIC_PATHS.some(path => to.path === path || to.path.startsWith(path))) {
-    return;
-  }
-
-  // 在体验模式下，根路径 / 不需要认证（体验前端）
-  const config = useRuntimeConfig();
-  const isDemoMode = config.public.demoMode;
-  
-  if (isDemoMode && to.path === '/') {
     return;
   }
 

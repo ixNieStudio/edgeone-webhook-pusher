@@ -1,123 +1,124 @@
-/**
- * Theme composable for managing light/dark mode
- * Supports system preference detection, manual toggle, and localStorage persistence
- */
+import { computed, readonly, ref } from 'vue';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark';
 
 const STORAGE_KEY = 'theme-mode';
+const LIGHT_THEME_COLOR = '#f6f8fb';
+const DARK_THEME_COLOR = '#020617';
 
-// Global state (shared across all components)
-const mode = ref<ThemeMode>('system');
-const resolvedMode = ref<'light' | 'dark'>('light');
+const mode = ref<ThemeMode>('light');
+const hasExplicitPreference = ref(false);
+
+let initialized = false;
+let mediaQuery: MediaQueryList | null = null;
+let mediaQueryHandler: ((event: MediaQueryListEvent) => void) | null = null;
+
+function readStoredMode(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistMode(theme: ThemeMode) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // Ignore storage failures and keep the in-memory theme responsive.
+  }
+}
+
+function getSystemPreference(): ThemeMode {
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function updateThemeColor(theme: ThemeMode) {
+  if (typeof document === 'undefined') return;
+
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', theme === 'dark' ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
+  }
+}
+
+function applyTheme(theme: ThemeMode, withTransition = true) {
+  if (typeof document === 'undefined') return;
+
+  const html = document.documentElement;
+  if (withTransition) {
+    html.classList.add('theme-transition');
+  }
+  html.classList.toggle('dark', theme === 'dark');
+  html.style.colorScheme = theme;
+
+  if (withTransition) {
+    window.setTimeout(() => {
+      html.classList.remove('theme-transition');
+    }, 180);
+  }
+
+  updateThemeColor(theme);
+  mode.value = theme;
+}
+
+function resolveInitialTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'light';
+
+  const stored = readStoredMode();
+
+  if (stored === 'light' || stored === 'dark') {
+    hasExplicitPreference.value = true;
+    return stored;
+  }
+
+  if (stored === 'system') {
+    const resolved = getSystemPreference();
+    persistMode(resolved);
+    hasExplicitPreference.value = true;
+    return resolved;
+  }
+
+  hasExplicitPreference.value = false;
+  return getSystemPreference();
+}
+
+function setMode(nextMode: ThemeMode) {
+  mode.value = nextMode;
+  hasExplicitPreference.value = true;
+  persistMode(nextMode);
+  applyTheme(nextMode);
+}
+
+function toggle() {
+  setMode(mode.value === 'dark' ? 'light' : 'dark');
+}
+
+function init() {
+  if (initialized || typeof window === 'undefined') return;
+
+  initialized = true;
+  applyTheme(resolveInitialTheme(), false);
+
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  mediaQueryHandler = (event) => {
+    if (!hasExplicitPreference.value) {
+      applyTheme(event.matches ? 'dark' : 'light');
+    }
+  };
+  mediaQuery.addEventListener('change', mediaQueryHandler);
+}
 
 export function useTheme() {
-  const isDark = computed(() => resolvedMode.value === 'dark');
-
-  /**
-   * Get system color scheme preference
-   */
-  function getSystemPreference(): 'light' | 'dark' {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  /**
-   * Apply theme to DOM
-   */
-  function applyTheme(theme: 'light' | 'dark') {
-    if (typeof document === 'undefined') return;
-    
-    const html = document.documentElement;
-    
-    // Add transition class for smooth theme change
-    html.classList.add('theme-transition');
-    
-    if (theme === 'dark') {
-      html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
-    }
-    
-    // Remove transition class after animation completes
-    setTimeout(() => {
-      html.classList.remove('theme-transition');
-    }, 300);
-    
-    resolvedMode.value = theme;
-  }
-
-  /**
-   * Resolve the actual theme based on mode
-   */
-  function resolveTheme(themeMode: ThemeMode): 'light' | 'dark' {
-    if (themeMode === 'system') {
-      return getSystemPreference();
-    }
-    return themeMode;
-  }
-
-  /**
-   * Set theme mode and persist to localStorage
-   */
-  function setMode(newMode: ThemeMode) {
-    mode.value = newMode;
-    
-    // Persist to localStorage
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, newMode);
-    }
-    
-    // Apply the resolved theme
-    const resolved = resolveTheme(newMode);
-    applyTheme(resolved);
-  }
-
-  /**
-   * Toggle between light and dark mode
-   * If currently in system mode, switch to the opposite of current resolved mode
-   */
-  function toggle() {
-    if (mode.value === 'system') {
-      // Switch to explicit mode opposite of current
-      setMode(resolvedMode.value === 'dark' ? 'light' : 'dark');
-    } else {
-      // Toggle between light and dark
-      setMode(mode.value === 'dark' ? 'light' : 'dark');
-    }
-  }
-
-  /**
-   * Initialize theme from localStorage or system preference
-   */
-  function init() {
-    if (typeof window === 'undefined') return;
-    
-    // Read from localStorage
-    const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    
-    if (stored && ['light', 'dark', 'system'].includes(stored)) {
-      mode.value = stored;
-    } else {
-      mode.value = 'system';
-    }
-    
-    // Apply initial theme
-    const resolved = resolveTheme(mode.value);
-    applyTheme(resolved);
-    
-    // Listen for system preference changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', (e) => {
-      if (mode.value === 'system') {
-        applyTheme(e.matches ? 'dark' : 'light');
-      }
-    });
-  }
+  const isDark = computed(() => mode.value === 'dark');
 
   return {
     mode: readonly(mode),
-    resolvedMode: readonly(resolvedMode),
     isDark,
     setMode,
     toggle,

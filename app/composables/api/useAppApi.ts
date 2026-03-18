@@ -1,60 +1,97 @@
 /**
- * 应用 API
+ * App-first admin API.
  */
 
-import type { ApiResponse, App, CreateAppInput, UpdateAppInput, AppWithCount, CreateBindCodeResponse, BindCodeStatusResponse } from '~/types';
+import type {
+  ApiResponse,
+  AppDeliveryConfig,
+  AppRecipientView,
+  CreateManagedAppInput,
+  ManagedAppLiteDetail,
+  ManagedAppSummary,
+  IndexRepairResponse,
+  SetupOverview,
+  UpdateManagedAppInput,
+  PushResult,
+  BindCodeStatusResponse,
+  CreateBindCodeResponse,
+} from '~/types';
 import { useRequest } from './useRequest';
 
 export function useAppApi() {
   const { get, post, put, del } = useRequest();
 
-  /**
-   * 获取应用列表（带 openIdCount）
-   */
-  function getApps(): Promise<ApiResponse<AppWithCount[]>> {
-    return get<AppWithCount[]>('/apps');
+  function getApps(): Promise<ApiResponse<ManagedAppSummary[]>> {
+    return get<ManagedAppSummary[]>('/apps');
   }
 
-  /**
-   * 获取应用详情（带 openIdCount）
-   */
-  function getApp(id: string): Promise<ApiResponse<AppWithCount>> {
-    return get<AppWithCount>(`/apps/${id}`);
+  function getApp(id: string): Promise<ApiResponse<ManagedAppLiteDetail>> {
+    return get<ManagedAppLiteDetail>(`/apps/${id}`);
   }
 
-  /**
-   * 创建应用
-   */
-  function createApp(data: CreateAppInput): Promise<ApiResponse<App>> {
-    return post<App>('/apps', data);
+  function createApp(data: CreateManagedAppInput): Promise<ApiResponse<ManagedAppLiteDetail>> {
+    return post<ManagedAppLiteDetail>('/apps', data);
   }
 
-  /**
-   * 更新应用
-   */
-  function updateApp(id: string, data: UpdateAppInput): Promise<ApiResponse<App>> {
-    return put<App>(`/apps/${id}`, data);
+  function updateApp(id: string, data: UpdateManagedAppInput): Promise<ApiResponse<ManagedAppLiteDetail>> {
+    return put<ManagedAppLiteDetail>(`/apps/${id}`, data);
   }
 
-  /**
-   * 删除应用
-   */
   function deleteApp(id: string): Promise<ApiResponse<void>> {
     return del<void>(`/apps/${id}`);
   }
 
-  /**
-   * 生成绑定码
-   */
-  function generateBindCode(appId: string): Promise<ApiResponse<CreateBindCodeResponse>> {
-    return post<CreateBindCodeResponse>(`/apps/${appId}/bindcode`, {});
+  function getAppConfig(id: string): Promise<ApiResponse<AppDeliveryConfig>> {
+    return get<AppDeliveryConfig>(`/apps/${id}/config`);
   }
 
-  /**
-   * 查询绑定码状态
-   */
+  function updateAppConfig(id: string, data: UpdateManagedAppInput): Promise<ApiResponse<ManagedAppLiteDetail>> {
+    return put<ManagedAppLiteDetail>(`/apps/${id}/config`, data);
+  }
+
+  function getAppRecipients(appId: string): Promise<ApiResponse<AppRecipientView[]>> {
+    return get<AppRecipientView[]>(`/apps/${appId}/recipients`);
+  }
+
+  function generateBindCode(appId: string): Promise<ApiResponse<CreateBindCodeResponse>> {
+    return post<CreateBindCodeResponse>(`/apps/${appId}/recipients/bind`, {});
+  }
+
   function getBindCodeStatus(appId: string, code: string): Promise<ApiResponse<BindCodeStatusResponse>> {
-    return get<BindCodeStatusResponse>(`/apps/${appId}/bindcode/${code}`);
+    return get<BindCodeStatusResponse>(`/apps/${appId}/recipients/bind/${code}`);
+  }
+
+  function deleteRecipient(appId: string, recipientId: string): Promise<ApiResponse<void>> {
+    return del<void>(`/apps/${appId}/recipients/${encodeURIComponent(recipientId)}`);
+  }
+
+  function testSend(
+    appId: string,
+    data: {
+      title: string;
+      desp?: string;
+      content?: string;
+      type?: 'text' | 'page';
+      format?: 'text' | 'markdown' | 'html';
+      url?: string;
+      summary?: string;
+      short?: string;
+      template?: string;
+    }
+  ): Promise<ApiResponse<PushResult>> {
+    return post<PushResult>(`/apps/${appId}/test-send`, data);
+  }
+
+  function getSetupOverview(): Promise<ApiResponse<SetupOverview>> {
+    return get<SetupOverview>('/setup/overview');
+  }
+
+  function getChannelCapabilities(): Promise<ApiResponse<Record<string, unknown>>> {
+    return get<Record<string, unknown>>('/channel-capabilities');
+  }
+
+  function repairIndexes(domain: 'apps' | 'auth_profiles' | 'all'): Promise<ApiResponse<IndexRepairResponse>> {
+    return post<IndexRepairResponse>('/settings/indexes/repair', { domain });
   }
 
   return {
@@ -63,7 +100,15 @@ export function useAppApi() {
     createApp,
     updateApp,
     deleteApp,
+    getAppConfig,
+    updateAppConfig,
+    getAppRecipients,
     generateBindCode,
     getBindCodeStatus,
+    deleteRecipient,
+    testSend,
+    getSetupOverview,
+    getChannelCapabilities,
+    repairIndexes,
   };
 }

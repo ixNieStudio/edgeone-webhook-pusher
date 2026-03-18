@@ -36,25 +36,25 @@ export function useRequest() {
         body: body ? JSON.stringify(body) : undefined,
       });
 
-      // Handle 204 No Content
+      if (res.status === 401) {
+        auth.logout();
+        router.push('/admin/login');
+        throw new Error('未授权，请重新登录');
+      }
+
       if (res.status === 204) {
         return { code: 0, message: 'success', data: null as T };
       }
 
-      if (res.status === 401) {
-        auth.logout();
-        router.push('/admin/login');
-        return { code: 401, message: '未授权，请重新登录', data: null as T };
+      const data = await res.json() as ApiResponse<T>;
+
+      if (!res.ok || data.code !== 0) {
+        throw new Error(data.message || '请求失败');
       }
 
-      const data = await res.json();
-      return data as ApiResponse<T>;
+      return data;
     } catch (error) {
-      return {
-        code: -1,
-        message: error instanceof Error ? error.message : '网络请求失败',
-        data: null as T,
-      };
+      throw error instanceof Error ? error : new Error('网络请求失败');
     }
   }
 

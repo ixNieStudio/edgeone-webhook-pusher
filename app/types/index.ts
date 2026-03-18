@@ -8,6 +8,9 @@ export * from './channel';
 // App 应用
 export * from './app';
 
+// App-first 配置
+export * from './app-config';
+
 // OpenID 订阅者
 export * from './openid';
 
@@ -25,9 +28,6 @@ export * from './constants';
 
 // 前端特有类型
 export * from './frontend';
-
-// Demo App 体验应用
-export * from './demo-app';
 
 // BindCode 绑定码
 export * from './bindcode';
