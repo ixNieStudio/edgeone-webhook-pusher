@@ -7,8 +7,44 @@ import { appsKV, channelsKV, openidsKV } from '../shared/kv-client.js';
 import { generateAppId, generateAppKey, now } from '../shared/utils.js';
 import type { App, CreateAppInput, UpdateAppInput, Channel, OpenID, WeChatAppConfig, WorkWeChatAppConfig, WebhookAppConfig } from '../types/index.js';
 import { KVKeys, PushModes, MessageTypes, ApiError, ErrorCodes } from '../types/index.js';
+import { adminIndexService } from './admin-index.service.js';
 
 class AppService {
+  private async syncSendProfileByApp(app: App): Promise<void> {
+    try {
+      const { sendProfileService } = await import('./send-profile.service.js');
+      await sendProfileService.syncByApp(app);
+    } catch {
+      // send profile 缺失时可在发送链路自愈，这里不阻断主写流程
+    }
+  }
+
+  private async removeSendProfileByKey(appKey: string): Promise<void> {
+    await appsKV.delete(KVKeys.APP_SEND_PROFILE(appKey));
+  }
+
+  private async ensureAppIndexes(apps: App[]): Promise<void> {
+    await Promise.all(
+      apps.map(async (app) => {
+        const indexedId = await appsKV.get<string>(KVKeys.APP_INDEX(app.key));
+        if (indexedId !== app.id) {
+          await appsKV.put(KVKeys.APP_INDEX(app.key), app.id);
+        }
+      })
+    );
+  }
+
+  private async loadAppsByIds(ids: string[]): Promise<App[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const appMap = await appsKV.getMany<App>(ids.map((id) => KVKeys.APP(id)));
+    return ids
+      .map((id) => appMap[KVKeys.APP(id)] ?? null)
+      .filter((app): app is App => app !== null);
+  }
+
   /**
    * 创建应用
    */
@@ -40,15 +76,15 @@ class AppService {
     const app = this.buildAppConfig(id, key, name.trim(), channelId, channel.type, data, timestamp);
 
     // 保存应用
-    await appsKV.put(KVKeys.APP(id), app);
-
-    // 创建 key 到 id 的索引
-    await appsKV.put(KVKeys.APP_INDEX(key), id);
-
-    // 更新应用列表
     const list = (await appsKV.get<string[]>(KVKeys.APP_LIST)) || [];
     list.push(id);
-    await appsKV.put(KVKeys.APP_LIST, list);
+    await appsKV.putMany<unknown>([
+      { key: KVKeys.APP(id), value: app },
+      { key: KVKeys.APP_INDEX(key), value: id },
+      { key: KVKeys.APP_LIST, value: list },
+    ]);
+
+    await this.syncSendProfileByApp(app);
 
     return app;
   }
@@ -203,22 +239,43 @@ class AppService {
    */
   async getByKey(key: string): Promise<App | null> {
     const id = await appsKV.get<string>(KVKeys.APP_INDEX(key));
-    if (!id) return null;
-    return this.getById(id);
+    if (id) {
+      return this.getById(id);
+    }
+
+    const indexedIds = (await appsKV.get<string[]>(KVKeys.APP_LIST)) || [];
+    let apps = await this.loadAppsByIds(indexedIds);
+
+    if (indexedIds.length === 0 || apps.length !== indexedIds.length) {
+      await adminIndexService.repair('apps', 'auto');
+      const repairedIds = (await appsKV.get<string[]>(KVKeys.APP_LIST)) || [];
+      apps = await this.loadAppsByIds(repairedIds);
+    }
+
+    const app = apps.find((item) => item.key === key) || null;
+    if (app) {
+      await appsKV.put(KVKeys.APP_INDEX(key), app.id);
+    }
+    return app;
   }
 
   /**
    * 获取所有应用列表
    */
   async list(): Promise<App[]> {
-    const ids = (await appsKV.get<string[]>(KVKeys.APP_LIST)) || [];
+    const indexedIds = (await appsKV.get<string[]>(KVKeys.APP_LIST)) || [];
+    const indexedApps = await this.loadAppsByIds(indexedIds);
 
-    // 并行获取所有应用，避免 N+1 查询问题
-    const appPromises = ids.map(id => appsKV.get<App>(KVKeys.APP(id)));
-    const apps = await Promise.all(appPromises);
+    if (indexedIds.length > 0 && indexedApps.length === indexedIds.length) {
+      await this.ensureAppIndexes(indexedApps);
+      return indexedApps;
+    }
 
-    // 过滤掉 null 值
-    return apps.filter((app): app is App => app !== null);
+    await adminIndexService.repair('apps', 'auto');
+    const repairedIds = (await appsKV.get<string[]>(KVKeys.APP_LIST)) || [];
+    const validApps = await this.loadAppsByIds(repairedIds);
+    await this.ensureAppIndexes(validApps);
+    return validApps;
   }
 
   /**
@@ -254,6 +311,8 @@ class AppService {
     app.updatedAt = now();
 
     await appsKV.put(KVKeys.APP(id), app);
+    await this.removeSendProfileByKey(app.key);
+    await this.syncSendProfileByApp(app);
     return app;
   }
 
@@ -340,8 +399,10 @@ class AppService {
     await this.deleteOpenIDs(id);
 
     // 删除 key 索引
-    await appsKV.delete(KVKeys.APP_INDEX(app.key));
-
+    await Promise.all([
+      appsKV.delete(KVKeys.APP_INDEX(app.key)),
+      this.removeSendProfileByKey(app.key),
+    ]);
     // 删除应用
     await appsKV.delete(KVKeys.APP(id));
 
@@ -376,13 +437,21 @@ class AppService {
     await Promise.all(deletePromises);
 
     // 删除应用的 OpenID 列表
-    await openidsKV.delete(KVKeys.OPENID_APP(appId));
+    await Promise.all([
+      openidsKV.delete(KVKeys.OPENID_APP(appId)),
+      openidsKV.delete(KVKeys.OPENID_VALUES(appId)),
+    ]);
   }
 
   /**
    * 获取应用下的 OpenID 数量
    */
   async getOpenIDCount(id: string): Promise<number> {
+    const values = await openidsKV.get<string[]>(KVKeys.OPENID_VALUES(id));
+    if (values) {
+      return values.length;
+    }
+
     const openIdList = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(id))) || [];
     return openIdList.length;
   }

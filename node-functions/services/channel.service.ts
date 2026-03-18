@@ -17,6 +17,17 @@ function generateMsgToken(): string {
 }
 
 class ChannelService {
+  private async loadChannelsByIds(ids: string[]): Promise<Channel[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const channelMap = await channelsKV.getMany<Channel>(ids.map((id) => KVKeys.CHANNEL(id)));
+    return ids
+      .map((id) => channelMap[KVKeys.CHANNEL(id)] ?? null)
+      .filter((channel): channel is Channel => channel !== null);
+  }
+
   /**
    * 创建渠道
    */
@@ -141,14 +152,14 @@ class ChannelService {
    * 获取所有渠道列表
    */
   async list(): Promise<Channel[]> {
-    const ids = (await channelsKV.get<string[]>(KVKeys.CHANNEL_LIST)) || [];
+    const indexedIds = (await channelsKV.get<string[]>(KVKeys.CHANNEL_LIST)) || [];
+    const indexedChannels = await this.loadChannelsByIds(indexedIds);
 
-    // 并行获取所有渠道，避免 N+1 查询问题
-    const channelPromises = ids.map(id => channelsKV.get<Channel>(KVKeys.CHANNEL(id)));
-    const channels = await Promise.all(channelPromises);
+    if (indexedIds.length === 0) {
+      return [];
+    }
 
-    // 过滤掉 null 值
-    return channels.filter((channel): channel is Channel => channel !== null);
+    return indexedChannels;
   }
 
   /**

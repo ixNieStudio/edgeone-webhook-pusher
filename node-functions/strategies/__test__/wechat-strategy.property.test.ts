@@ -10,6 +10,7 @@ import { WeChatStrategy } from '../wechat-strategy.js';
 import type { Channel } from '../../types/channel.js';
 import type { PushMessage } from '../types.js';
 import * as kvClient from '../../shared/kv-client.js';
+import { KVKeys } from '../../types/constants.js';
 
 // Mock KV client
 vi.mock('../../shared/kv-client.js', () => ({
@@ -96,7 +97,7 @@ describe('WeChatStrategy - Property-Based Tests', () => {
 
             // 验证：从缓存读取了两次
             expect(kvClient.configKV.get).toHaveBeenCalledTimes(2);
-            expect(kvClient.configKV.get).toHaveBeenCalledWith(`wechat_token:${config.appId}`);
+            expect(kvClient.configKV.get).toHaveBeenCalledWith(KVKeys.WECHAT_TOKEN(config.appId));
           }
         ),
         { numRuns: 100 }
@@ -162,7 +163,7 @@ describe('WeChatStrategy - Property-Based Tests', () => {
 
             // 验证：新 token 被缓存
             expect(kvClient.configKV.put).toHaveBeenCalledWith(
-              `wechat_token:${config.appId}`,
+              KVKeys.WECHAT_TOKEN(config.appId),
               expect.objectContaining({
                 accessToken: tokenData.newToken,
               }),
@@ -271,11 +272,11 @@ describe('WeChatStrategy - Property-Based Tests', () => {
             expect(global.fetch).toHaveBeenCalledTimes(3);
 
             // 验证：清除了旧的缓存
-            expect(kvClient.configKV.delete).toHaveBeenCalledWith(`wechat_token:${config.appId}`);
+            expect(kvClient.configKV.delete).toHaveBeenCalledWith(KVKeys.WECHAT_TOKEN(config.appId));
 
             // 验证：缓存了新 token
             expect(kvClient.configKV.put).toHaveBeenCalledWith(
-              `wechat_token:${config.appId}`,
+              KVKeys.WECHAT_TOKEN(config.appId),
               expect.objectContaining({
                 accessToken: tokens.newToken,
               }),

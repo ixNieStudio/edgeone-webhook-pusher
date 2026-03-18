@@ -10,6 +10,7 @@ import type { Channel } from '../../types/channel.js';
 import type { PushMessage } from '../types.js';
 import { ChannelCapability } from '../types.js';
 import * as kvClient from '../../shared/kv-client.js';
+import { KVKeys } from '../../types/constants.js';
 
 // Mock KV client
 vi.mock('../../shared/kv-client.js', () => ({
@@ -64,7 +65,7 @@ describe('WeChatStrategy', () => {
       const token = await (strategy as any).getAccessToken();
 
       expect(token).toBe('cached-token');
-      expect(kvClient.configKV.get).toHaveBeenCalledWith('wechat_token:test-app-id');
+      expect(kvClient.configKV.get).toHaveBeenCalledWith(KVKeys.WECHAT_TOKEN('test-app-id'));
     });
 
     it('应该在缓存过期时请求新 token', async () => {
@@ -105,7 +106,7 @@ describe('WeChatStrategy', () => {
 
       expect(token).toBe('new-token');
       expect(kvClient.configKV.put).toHaveBeenCalledWith(
-        'wechat_token:test-app-id',
+        KVKeys.WECHAT_TOKEN('test-app-id'),
         expect.objectContaining({
           accessToken: 'new-token',
         }),
@@ -322,7 +323,7 @@ describe('WeChatStrategy', () => {
       const result = await (strategy as any).sendRequest('old-token', messageBody);
 
       expect(result.success).toBe(true);
-      expect(kvClient.configKV.delete).toHaveBeenCalledWith('wechat_token:test-app-id');
+      expect(kvClient.configKV.delete).toHaveBeenCalledWith(KVKeys.WECHAT_TOKEN('test-app-id'));
       expect(global.fetch).toHaveBeenCalledTimes(3); // original send + token refresh + retry send
     });
 

@@ -26,15 +26,15 @@ vi.mock('../app.service.js', () => ({
   },
 }));
 
-vi.mock('../demo-app.service.js', () => ({
-  demoAppService: {
-    getByKey: vi.fn(),
-  },
-}));
-
 vi.mock('../channel.service.js', () => ({
   channelService: {
     getById: vi.fn(),
+  },
+}));
+
+vi.mock('../app-config.service.js', () => ({
+  appConfigService: {
+    resolveApp: vi.fn(),
   },
 }));
 
@@ -46,26 +46,43 @@ vi.mock('../openid.service.js', () => ({
   },
 }));
 
+vi.mock('../send-profile.service.js', () => ({
+  sendProfileService: {
+    getByAppKey: vi.fn(),
+  },
+}));
+
 vi.mock('../message.service.js', () => ({
   messageService: {
     saveMessage: vi.fn(),
   },
 }));
 
+vi.mock('../message-detail.service.js', () => ({
+  messageDetailService: {
+    createSnapshot: vi.fn(),
+    getPublicDetail: vi.fn(),
+  },
+}));
+
 // Import after mocking
 import { pushService } from '../push.service.js';
 import { appService } from '../app.service.js';
-import { demoAppService } from '../demo-app.service.js';
 import { channelService } from '../channel.service.js';
+import { appConfigService } from '../app-config.service.js';
 import { openidService } from '../openid.service.js';
+import { sendProfileService } from '../send-profile.service.js';
 import { messageService } from '../message.service.js';
+import { messageDetailService } from '../message-detail.service.js';
 
 // Type the mocked services
 const mockAppService = vi.mocked(appService);
-const mockDemoAppService = vi.mocked(demoAppService);
 const mockChannelService = vi.mocked(channelService);
+const mockAppConfigService = vi.mocked(appConfigService);
 const mockOpenidService = vi.mocked(openidService);
+const mockSendProfileService = vi.mocked(sendProfileService);
 const mockMessageService = vi.mocked(messageService);
+const mockMessageDetailService = vi.mocked(messageDetailService);
 
 describe('PushService Integration Tests', () => {
   const originalBuildKey = process.env.BUILD_KEY;
@@ -75,8 +92,116 @@ describe('PushService Integration Tests', () => {
     vi.clearAllMocks();
     process.env.BUILD_KEY = 'EdgeOne-Pusher_Test-Key!2026';
     mockMessageService.saveMessage.mockResolvedValue(undefined);
-    // Demo app service 默认返回 null (没有找到 demo 应用)
-    mockDemoAppService.getByKey.mockResolvedValue(null);
+    mockMessageDetailService.createSnapshot.mockResolvedValue({
+      token: 'md_test_token',
+      detailPageUrl: 'https://pusher.example.com/open/messages/md_test_token',
+    });
+    mockAppConfigService.resolveApp.mockImplementation(async (app: any) => {
+      const channel = await mockChannelService.getById(app.channelId);
+      if (!channel) {
+        throw new Error(`Channel not found for app ${app.id}`);
+      }
+
+      const defaultSendType = app.channelType === 'wechat'
+        ? (app.messageType === MessageTypes.TEMPLATE ? 'page' : 'text')
+        : app.channelType === 'work_wechat'
+          ? (app.messageType === 'template_card' ? 'page' : 'text')
+          : undefined;
+
+      return {
+        deliveryConfig: {
+          appId: app.id,
+          deliveryType: app.channelType,
+          connectionMode: 'auth_profile_ref',
+          authProfileId: channel.id,
+          messageProfile: {
+            renderer: 'text',
+            defaultSendType,
+            atMobiles: app.atMobiles,
+            atAll: app.atAll,
+          },
+          recipientProfile: app.channelType === 'wechat'
+            ? {
+                mode: app.pushMode ?? PushModes.SINGLE,
+                pushMode: app.pushMode ?? PushModes.SINGLE,
+              }
+            : {
+                mode: 'fixed_targets',
+                userIds: app.userIds ?? [],
+                departmentIds: app.departmentIds ?? [],
+              },
+          createdAt: app.createdAt,
+          updatedAt: app.updatedAt,
+        },
+        resolved: {
+          appId: app.id,
+          appKey: app.key,
+          appName: app.name,
+          deliveryType: app.channelType,
+          runtimeChannelId: channel.id,
+          authProfileId: channel.id,
+          renderer: 'text',
+          defaultSendType,
+          contentFormatDefault: 'text',
+          jumpBehavior: 'none',
+          pushMode: app.pushMode,
+          userIds: app.userIds,
+          departmentIds: app.departmentIds,
+          atMobiles: app.atMobiles,
+          atAll: app.atAll,
+        },
+        runtimeChannel: channel,
+        authProfile: channel,
+        legacy: {
+          usesLegacyChannel: true,
+          usesInlineWebhookFallback: false,
+        },
+      };
+    });
+    mockSendProfileService.getByAppKey.mockImplementation(async (appKey: string) => {
+      const app = await mockAppService.getByKey(appKey);
+      if (!app) {
+        return null;
+      }
+
+      const resolvedContext = await mockAppConfigService.resolveApp(app as any);
+      const targets = await (resolvedContext.resolved.deliveryType === 'wechat'
+        ? ((resolvedContext.resolved.pushMode ?? (app as any).pushMode) === PushModes.SINGLE
+            ? (() => mockOpenidService.getFirstOpenIdByApp(app.id).then((value) => value ? [value] : []))()
+            : mockOpenidService.listOpenIdValuesByApp(app.id))
+        : [
+            ...(resolvedContext.resolved.userIds ?? []),
+            ...((resolvedContext.resolved.departmentIds ?? []).map((id: string) => `dept_${id}`)),
+          ]);
+
+      return {
+        app: {
+          id: app.id,
+          key: app.key,
+          name: app.name,
+          channelType: app.channelType,
+        },
+        message: {
+          renderer: resolvedContext.resolved.renderer,
+          defaultSendType: resolvedContext.resolved.defaultSendType,
+          contentFormatDefault: resolvedContext.resolved.contentFormatDefault,
+          jumpBehavior: resolvedContext.resolved.jumpBehavior,
+          templateId: resolvedContext.resolved.templateId,
+          fieldMap: resolvedContext.resolved.fieldMap,
+          templateProfiles: resolvedContext.resolved.templateProfiles,
+          fallbackToText: resolvedContext.resolved.fallbackToText,
+          atMobiles: resolvedContext.resolved.atMobiles,
+          atAll: resolvedContext.resolved.atAll,
+        },
+        channel: {
+          id: resolvedContext.runtimeChannel.id,
+          type: resolvedContext.runtimeChannel.type,
+          config: resolvedContext.runtimeChannel.config,
+        },
+        targets,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   });
 
   afterEach(() => {
@@ -206,7 +331,7 @@ describe('PushService Integration Tests', () => {
       );
     });
 
-    it('应该成功发送微信模板消息（订阅模式）', async () => {
+    it('应该在默认网页模式下发送微信详情页消息（订阅模式）', async () => {
       // 1. Mock 微信渠道和应用
       const channel: Channel = {
         id: 'ch_wechat_2',
@@ -223,12 +348,11 @@ describe('PushService Integration Tests', () => {
       const app: WeChatAppConfig = {
         id: 'app_wechat_2',
         key: 'test_wechat_template_key',
-        name: '测试微信模板应用',
+        name: '测试微信网页应用',
         channelId: channel.id,
         channelType: 'wechat',
         pushMode: PushModes.SUBSCRIBE,
         messageType: MessageTypes.TEMPLATE,
-        templateId: 'template_123',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -279,8 +403,8 @@ describe('PushService Integration Tests', () => {
             }),
           });
         }
-        // Mock 微信模板消息 API
-        else if (url.includes('/message/template/send')) {
+        // Mock 微信客服消息 API
+        else if (url.includes('/message/custom/send')) {
           return Promise.resolve({
             json: () => Promise.resolve({
               errcode: 0,
@@ -294,8 +418,8 @@ describe('PushService Integration Tests', () => {
 
       // 3. 发送消息
       const message: PushMessageInput = {
-        title: '模板消息标题',
-        desp: '模板消息内容',
+        title: '网页消息标题',
+        desp: '网页消息正文，用于自动生成详情页摘要。',
       };
       const result = await pushService.push(app.key, message);
 
@@ -305,6 +429,227 @@ describe('PushService Integration Tests', () => {
       expect(result.failed).toBe(0);
       expect(result.results).toHaveLength(2);
       expect(result.results!.every(r => r.success)).toBe(true);
+      expect(mockMessageDetailService.createSnapshot).toHaveBeenCalledTimes(1);
+      expect(mockMessageService.saveMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detailPageUrl: 'https://pusher.example.com/open/messages/md_test_token',
+          jumpMode: 'landing',
+        })
+      );
+    });
+
+    it('应该为网页类型消息生成公开详情页', async () => {
+      const channel: Channel = {
+        id: 'ch_wechat_markdown',
+        name: '测试微信渠道',
+        type: 'wechat',
+        config: {
+          appId: 'wx_test_appid',
+          appSecret: 'wx_test_secret',
+        } as WeChatConfig,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const app: WeChatAppConfig = {
+        id: 'app_wechat_markdown',
+        key: 'test_wechat_markdown_key',
+        name: '测试 Markdown 应用',
+        channelId: channel.id,
+        channelType: 'wechat',
+        pushMode: PushModes.SINGLE,
+        messageType: MessageTypes.NORMAL,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      mockAppService.getByKey.mockResolvedValue(app);
+      mockChannelService.getById.mockResolvedValue(channel);
+      mockOpenidService.getFirstOpenIdByApp.mockResolvedValue('openid_markdown_1');
+
+      const requestBodies: Array<Record<string, unknown>> = [];
+      (global.fetch as any).mockImplementation((url: string, init?: { body?: string }) => {
+        if (url.includes('/api/kv/new-kv') && url.includes('action=get')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ success: true, data: null }),
+          });
+        }
+        if (url.includes('/api/kv/new-kv') && url.includes('action=put')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (url.includes('/cgi-bin/token')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              access_token: 'mock_access_token',
+              expires_in: 7200,
+            }),
+          });
+        }
+        if (url.includes('/message/custom/send')) {
+          requestBodies.push(JSON.parse(init?.body || '{}'));
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              errcode: 0,
+              errmsg: 'ok',
+              msgid: 456789,
+            }),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await pushService.push(app.key, {
+        title: '网页告警',
+        desp: '这里是一段用于生成详情页摘要和正文的网页内容。',
+        type: 'page',
+      }, {
+        baseUrl: 'https://pusher.example.com',
+      });
+
+      expect(result.success).toBe(1);
+      expect(mockMessageDetailService.createSnapshot).toHaveBeenCalledTimes(1);
+      expect(mockMessageService.saveMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contentFormat: 'text',
+          detailPageUrl: 'https://pusher.example.com/open/messages/md_test_token',
+          jumpMode: 'landing',
+        })
+      );
+      expect(requestBodies[0].text.content).toContain('详情：https://pusher.example.com/open/messages/md_test_token');
+    });
+
+    it('网页类型消息会忽略外部 url 并生成项目详情页', async () => {
+      const channel: Channel = {
+        id: 'ch_wechat_web_url',
+        name: '测试微信渠道',
+        type: 'wechat',
+        config: {
+          appId: 'wx_test_appid',
+          appSecret: 'wx_test_secret',
+        } as WeChatConfig,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const app: WeChatAppConfig = {
+        id: 'app_wechat_web_url',
+        key: 'test_wechat_web_url_key',
+        name: '测试微信网页应用',
+        channelId: channel.id,
+        channelType: 'wechat',
+        pushMode: PushModes.SINGLE,
+        messageType: MessageTypes.NORMAL,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      mockAppService.getByKey.mockResolvedValue(app);
+      mockChannelService.getById.mockResolvedValue(channel);
+      mockOpenidService.getFirstOpenIdByApp.mockResolvedValue('openid_web_1');
+
+      const result = await pushService.push(app.key, {
+        title: '网页消息',
+        desp: '网页内容',
+        type: 'page',
+        url: 'https://example.com/detail?id=123',
+      }, {
+        baseUrl: 'https://pusher.example.com',
+      });
+
+      expect(result.success).toBe(1);
+      expect(mockMessageDetailService.createSnapshot).toHaveBeenCalledTimes(1);
+      expect(mockMessageService.saveMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalUrl: undefined,
+          detailPageUrl: 'https://pusher.example.com/open/messages/md_test_token',
+          jumpMode: 'landing',
+        })
+      );
+    });
+
+    it('应该允许在默认网页应用中显式覆盖为文本发送', async () => {
+      const channel: Channel = {
+        id: 'ch_wechat_template_profile',
+        name: '测试微信渠道',
+        type: 'wechat',
+        config: {
+          appId: 'wx_test_appid',
+          appSecret: 'wx_test_secret',
+        } as WeChatConfig,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const app: WeChatAppConfig = {
+        id: 'app_wechat_template_profile',
+        key: 'test_wechat_template_profile_key',
+        name: '测试默认网页应用',
+        channelId: channel.id,
+        channelType: 'wechat',
+        pushMode: PushModes.SINGLE,
+        messageType: MessageTypes.TEMPLATE,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      mockAppService.getByKey.mockResolvedValue(app);
+      mockChannelService.getById.mockResolvedValue(channel);
+      mockOpenidService.getFirstOpenIdByApp.mockResolvedValue('openid_template_profile_1');
+
+      const requestBodies: Array<Record<string, unknown>> = [];
+      (global.fetch as any).mockImplementation((url: string, init?: { body?: string }) => {
+        if (url.includes('/api/kv/new-kv') && url.includes('action=get')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ success: true, data: null }),
+          });
+        }
+        if (url.includes('/api/kv/new-kv') && url.includes('action=put')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (url.includes('/cgi-bin/token')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              access_token: 'mock_access_token',
+              expires_in: 7200,
+            }),
+          });
+        }
+        if (url.includes('/message/custom/send')) {
+          requestBodies.push(JSON.parse(init?.body || '{}'));
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              errcode: 0,
+              errmsg: 'ok',
+              msgid: 567890,
+            }),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await pushService.push(app.key, {
+        title: '覆盖发送为文本',
+        desp: '这一条应按普通文本链路发送。',
+        type: 'text',
+        url: 'https://example.com/detail?id=1001',
+      }, {
+        baseUrl: 'https://pusher.example.com',
+      });
+
+      expect(result.success).toBe(1);
+      expect(requestBodies[0].msgtype).toBe('text');
+      expect(requestBodies[0].text.content).toContain('链接：https://example.com/detail?id=1001');
+      expect(mockMessageDetailService.createSnapshot).not.toHaveBeenCalled();
+      expect(mockMessageService.saveMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalUrl: 'https://example.com/detail?id=1001',
+          jumpMode: 'direct',
+        })
+      );
     });
   });
 
@@ -391,6 +736,88 @@ describe('PushService Integration Tests', () => {
       expect(result.results![0].openId).toBe('user001');
       expect(result.results![1].openId).toBe('user002');
       expect(result.results!.every(r => r.success)).toBe(true);
+    });
+
+    it('企业微信网页类型消息会忽略外部 url 并生成项目详情页', async () => {
+      const channel: Channel = {
+        id: 'ch_work_wechat_web_url',
+        name: '测试企业微信渠道',
+        type: 'work_wechat',
+        config: {
+          corpId: 'corp_test_id',
+          agentId: 1000001,
+          corpSecret: 'corp_test_secret',
+        } as WorkWeChatConfig,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const app: WorkWeChatAppConfig = {
+        id: 'app_work_wechat_web_url',
+        key: 'test_work_wechat_web_url_key',
+        name: '测试企业微信网页应用',
+        channelId: channel.id,
+        channelType: 'work_wechat',
+        userIds: ['user001'],
+        messageType: 'text',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      mockAppService.getByKey.mockResolvedValue(app);
+      mockChannelService.getById.mockResolvedValue(channel);
+
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/api/kv/new-kv') && url.includes('action=get')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ success: true, data: null }),
+          });
+        }
+        if (url.includes('/api/kv/new-kv') && url.includes('action=put')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({ success: true }),
+          });
+        }
+        if (url.includes('/cgi-bin/gettoken')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              errcode: 0,
+              errmsg: 'ok',
+              access_token: 'mock_work_wechat_token',
+              expires_in: 7200,
+            }),
+          });
+        }
+        if (url.includes('/cgi-bin/message/send')) {
+          return Promise.resolve({
+            json: () => Promise.resolve({
+              errcode: 0,
+              errmsg: 'ok',
+              msgid: 'msg_work_wechat_456',
+            }),
+          });
+        }
+        return Promise.reject(new Error(`Unexpected URL: ${url}`));
+      });
+
+      const result = await pushService.push(app.key, {
+        title: '网页消息',
+        desp: '企业微信网页内容',
+        type: 'page',
+        url: 'https://example.com/detail?id=456',
+      }, {
+        baseUrl: 'https://pusher.example.com',
+      });
+
+      expect(result.success).toBe(1);
+      expect(mockMessageDetailService.createSnapshot).toHaveBeenCalledTimes(1);
+      expect(mockMessageService.saveMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          originalUrl: undefined,
+          detailPageUrl: 'https://pusher.example.com/open/messages/md_test_token',
+          jumpMode: 'landing',
+        })
+      );
     });
 
     it('应该成功发送企业微信消息给指定部门', async () => {

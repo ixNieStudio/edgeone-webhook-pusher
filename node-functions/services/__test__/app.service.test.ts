@@ -19,15 +19,21 @@ import { PushModes, MessageTypes, ApiError } from '../../types/index.js';
 vi.mock('../../shared/kv-client.js', () => ({
   appsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
     put: vi.fn(),
+    putMany: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
   channelsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
   },
   openidsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
 }));
 
@@ -53,6 +59,9 @@ describe('AppService - Dynamic Configuration', () => {
     vi.clearAllMocks();
     // Default: no existing apps, key doesn't exist
     mockAppsKV.get.mockResolvedValue(null);
+    mockAppsKV.putMany.mockResolvedValue(undefined);
+    mockAppsKV.deleteMany.mockResolvedValue(undefined);
+    mockOpenidsKV.deleteMany.mockResolvedValue(undefined);
   });
 
   describe('创建微信应用', () => {

@@ -15,6 +15,7 @@ import { configService } from '../../services/config.service.js';
 import { configKV } from '../../shared/kv-client.js';
 import { now } from '../../shared/utils.js';
 import type { SystemConfig } from '../../types/system.js';
+import { KVKeys } from '../../types/constants.js';
 
 // Mock KV store
 vi.mock('../../shared/kv-client.js', () => ({
@@ -118,7 +119,7 @@ describe('Integration: Complete Password Reset Workflow', () => {
 
     // Verify KV store is updated (old token invalidated)
     expect(vi.mocked(configKV.put)).toHaveBeenCalledWith(
-      'config',
+      KVKeys.CONFIG,
       expect.objectContaining({
         adminToken: customPassword,
       })
@@ -145,7 +146,7 @@ describe('Integration: Complete Password Reset Workflow', () => {
 
     // Verify new token is saved to KV store
     expect(vi.mocked(configKV.put)).toHaveBeenCalledWith(
-      'config',
+      KVKeys.CONFIG,
       expect.objectContaining({
         adminToken: customPassword,
       })

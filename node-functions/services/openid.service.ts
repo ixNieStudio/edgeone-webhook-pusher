@@ -8,8 +8,65 @@ import { openidsKV, appsKV } from '../shared/kv-client.js';
 import { generateOpenIdRecordId, now } from '../shared/utils.js';
 import type { OpenID, CreateOpenIDInput, UpdateOpenIDInput, App } from '../types/index.js';
 import { KVKeys, ApiError, ErrorCodes } from '../types/index.js';
+import { adminIndexService } from './admin-index.service.js';
 
 class OpenIdService {
+  private async refreshSendProfile(appId: string): Promise<void> {
+    try {
+      const { sendProfileService } = await import('./send-profile.service.js');
+      await sendProfileService.removeByAppId(appId);
+      await sendProfileService.syncByAppId(appId);
+    } catch {
+      // send profile 可在发送时自愈，这里避免阻断绑定流程
+    }
+  }
+
+  private async rebuildOpenIdValues(appId: string): Promise<string[]> {
+    const ids = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
+    if (ids.length === 0) {
+      await openidsKV.delete(KVKeys.OPENID_VALUES(appId));
+      return [];
+    }
+
+    const recordMap = await openidsKV.getMany<OpenID>(ids.map((id) => KVKeys.OPENID(id)));
+    const values = ids
+      .map((id) => recordMap[KVKeys.OPENID(id)] ?? null)
+      .filter((record): record is OpenID => record !== null)
+      .map((record) => record.openId);
+
+    if (values.length === 0) {
+      await openidsKV.delete(KVKeys.OPENID_VALUES(appId));
+      return [];
+    }
+
+    await openidsKV.put(KVKeys.OPENID_VALUES(appId), values);
+    return values;
+  }
+
+  private async appendOpenIdValue(appId: string, openId: string): Promise<void> {
+    const values = (await openidsKV.get<string[]>(KVKeys.OPENID_VALUES(appId))) || [];
+    if (values.includes(openId)) {
+      return;
+    }
+
+    await openidsKV.put(KVKeys.OPENID_VALUES(appId), [...values, openId]);
+  }
+
+  private async removeOpenIdValue(appId: string, openId: string): Promise<void> {
+    const values = await openidsKV.get<string[]>(KVKeys.OPENID_VALUES(appId));
+    if (!values?.length) {
+      return;
+    }
+
+    const nextValues = values.filter((value) => value !== openId);
+    if (nextValues.length === 0) {
+      await openidsKV.delete(KVKeys.OPENID_VALUES(appId));
+      return;
+    }
+
+    await openidsKV.put(KVKeys.OPENID_VALUES(appId), nextValues);
+  }
+
   /**
    * 在指定应用下创建 OpenID 记录
    */
@@ -67,7 +124,12 @@ class OpenIdService {
     // 更新应用的 OpenID 列表
     const list = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
     list.push(id);
-    await openidsKV.put(KVKeys.OPENID_APP(appId), list);
+    await Promise.all([
+      openidsKV.put(KVKeys.OPENID_APP(appId), list),
+      this.appendOpenIdValue(appId, trimmedOpenId),
+    ]);
+    await adminIndexService.syncAppRecipientCount(appId);
+    await this.refreshSendProfile(appId);
 
     return record;
   }
@@ -84,50 +146,34 @@ class OpenIdService {
    */
   async listByApp(appId: string): Promise<OpenID[]> {
     const ids = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
+    if (ids.length === 0) {
+      return [];
+    }
 
-    // 并行获取所有 OpenID 记录，避免 N+1 查询问题
-    const recordPromises = ids.map(id => openidsKV.get<OpenID>(KVKeys.OPENID(id)));
-    const records = await Promise.all(recordPromises);
-
-    // 过滤掉 null 值
-    return records.filter((record): record is OpenID => record !== null);
+    const recordMap = await openidsKV.getMany<OpenID>(ids.map((id) => KVKeys.OPENID(id)));
+    return ids
+      .map((id) => recordMap[KVKeys.OPENID(id)] ?? null)
+      .filter((record): record is OpenID => record !== null);
   }
 
   /**
    * 获取指定应用下的第一个 OpenID（用于单发模式，避免加载全量记录）
    */
   async getFirstOpenIdByApp(appId: string): Promise<string | null> {
-    const ids = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
-    if (ids.length === 0) {
-      return null;
-    }
-
-    // 处理索引与明细可能短暂不一致的情况，找到首个有效记录
-    for (const id of ids) {
-      const record = await openidsKV.get<OpenID>(KVKeys.OPENID(id));
-      if (record?.openId) {
-        return record.openId;
-      }
-    }
-
-    return null;
+    const values = await this.listOpenIdValuesByApp(appId);
+    return values[0] ?? null;
   }
 
   /**
    * 获取指定应用下的所有 OpenID 值（轻量版，仅返回 openId 字符串）
    */
   async listOpenIdValuesByApp(appId: string): Promise<string[]> {
-    const ids = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
-    if (ids.length === 0) {
-      return [];
+    const exactValues = await openidsKV.get<string[]>(KVKeys.OPENID_VALUES(appId));
+    if (exactValues?.length) {
+      return exactValues;
     }
 
-    const recordPromises = ids.map(id => openidsKV.get<OpenID>(KVKeys.OPENID(id)));
-    const records = await Promise.all(recordPromises);
-
-    return records
-      .filter((record): record is OpenID => record !== null)
-      .map((record) => record.openId);
+    return this.rebuildOpenIdValues(appId);
   }
 
   /**
@@ -179,7 +225,12 @@ class OpenIdService {
     // 更新应用的 OpenID 列表
     const list = (await openidsKV.get<string[]>(KVKeys.OPENID_APP(appId))) || [];
     const newList = list.filter((oid) => oid !== id);
-    await openidsKV.put(KVKeys.OPENID_APP(appId), newList);
+    await Promise.all([
+      openidsKV.put(KVKeys.OPENID_APP(appId), newList),
+      this.removeOpenIdValue(appId, openId),
+    ]);
+    await adminIndexService.syncAppRecipientCount(appId);
+    await this.refreshSendProfile(appId);
   }
 
   /**
@@ -207,7 +258,12 @@ class OpenIdService {
     await Promise.all(deletePromises);
 
     // 删除应用的 OpenID 列表
-    await openidsKV.delete(KVKeys.OPENID_APP(appId));
+    await Promise.all([
+      openidsKV.delete(KVKeys.OPENID_APP(appId)),
+      openidsKV.delete(KVKeys.OPENID_VALUES(appId)),
+    ]);
+    await adminIndexService.syncAppRecipientCount(appId);
+    await this.refreshSendProfile(appId);
   }
 
   /**
@@ -231,12 +287,14 @@ class OpenIdService {
    * 批量获取 OpenID 记录
    */
   async getMany(ids: string[]): Promise<OpenID[]> {
-    // 并行获取所有 OpenID 记录
-    const recordPromises = ids.map(id => this.getById(id));
-    const records = await Promise.all(recordPromises);
+    if (ids.length === 0) {
+      return [];
+    }
 
-    // 过滤掉 null 值
-    return records.filter((record): record is OpenID => record !== null);
+    const recordMap = await openidsKV.getMany<OpenID>(ids.map((id) => KVKeys.OPENID(id)));
+    return ids
+      .map((id) => recordMap[KVKeys.OPENID(id)] ?? null)
+      .filter((record): record is OpenID => record !== null);
   }
 }
 

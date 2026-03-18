@@ -92,6 +92,45 @@ export function maskCredential(value: string): string {
 }
 
 /**
+ * Mask sensitive parts in webhook URLs before returning them to the admin UI.
+ */
+export function maskWebhookUrl(value: string): string {
+  if (!value) return '';
+
+  try {
+    const url = new URL(value);
+    const pathname = url.pathname
+      .split('/')
+      .map((segment) => {
+        if (!segment || segment.length <= 12) {
+          return segment;
+        }
+        return maskCredential(segment);
+      })
+      .join('/');
+
+    const params = new URLSearchParams(url.search);
+    for (const [key, rawValue] of params.entries()) {
+      params.set(key, rawValue ? maskCredential(rawValue) : rawValue);
+    }
+
+    url.pathname = pathname;
+    url.search = params.toString();
+
+    if (url.username) {
+      url.username = maskCredential(url.username);
+    }
+    if (url.password) {
+      url.password = maskCredential(url.password);
+    }
+
+    return url.toString();
+  } catch {
+    return maskCredential(value);
+  }
+}
+
+/**
  * Mask all sensitive fields in credentials object
  */
 export function maskCredentials<T extends Record<string, unknown>>(

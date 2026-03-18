@@ -45,7 +45,10 @@ function startServerProcess() {
   serverProcess = spawn('npx', ['tsx', resolve(__dirname, 'dev-server-worker.ts')], {
     cwd: rootDir,
     stdio: 'inherit',
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      EDGEONE_LOCAL_DEV: 'true',
+    },
   });
 
   serverProcess.on('exit', (code) => {

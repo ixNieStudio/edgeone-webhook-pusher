@@ -7,11 +7,11 @@
 
 import Router from '@koa/router';
 import type { AppContext } from '../types/context.js';
-import { channelService } from '../services/channel.service.js';
-import { appService } from '../services/app.service.js';
-import { openidService } from '../services/openid.service.js';
 import { messageService } from '../services/message.service.js';
 import { adminAuth } from '../middleware/admin-auth.js';
+import { adminIndexService } from '../services/admin-index.service.js';
+import { appsKV } from '../shared/kv-client.js';
+import { KVKeys } from '../types/constants.js';
 
 const router = new Router({ prefix: '/stats' });
 
@@ -26,23 +26,17 @@ router.use(adminAuth);
  * @returns {object} 统计数据
  */
 router.get('/', async (ctx: AppContext) => {
-  const [channels, apps, messageStats] = await Promise.all([
-    channelService.list(),
-    appService.list(),
-    messageService.getStats(),
+  const [indexStatus, totalMessages, appMeta] = await Promise.all([
+    adminIndexService.getIndexStatus(),
+    messageService.getTotalCount(),
+    appsKV.get<{ totalRecipients?: number }>(KVKeys.APP_META),
   ]);
 
-  // 计算 OpenID 总数
-  let openIds = 0;
-  for (const app of apps) {
-    openIds += await appService.getOpenIDCount(app.id);
-  }
-
   ctx.body = {
-    channels: channels.length,
-    apps: apps.length,
-    openIds,
-    messages: messageStats.total,
+    channels: indexStatus.authProfiles.total,
+    apps: indexStatus.apps.total,
+    openIds: appMeta?.totalRecipients ?? 0,
+    messages: totalMessages,
   };
 });
 

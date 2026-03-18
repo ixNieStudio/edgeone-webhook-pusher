@@ -2,6 +2,8 @@
  * Message 消息相关类型定义
  */
 
+import type { PushContentFormat, SimplifiedSendType } from './app-config.js';
+
 /**
  * 消息方向
  * - outbound: 发出的消息（推送给用户）
@@ -24,6 +26,15 @@ export interface DeliveryResult {
   msgId?: string;
 }
 
+export type MessageDeliveryState = 'received' | 'success' | 'partial' | 'failed';
+
+export interface MessageDeliverySummary {
+  total: number;
+  success: number;
+  failed: number;
+  state: MessageDeliveryState;
+}
+
 export interface Message {
   id: string;
   direction: MessageDirection;  // 消息方向
@@ -36,14 +47,79 @@ export interface Message {
   userAvatar?: string;          // 用户头像（API 返回时填充）
   title: string;                // 标题/摘要
   desp?: string;                // 详细内容
+  summary?: string;             // 展示摘要
+  content?: string;             // 富文本正文
+  contentFormat?: PushContentFormat;
+  originalUrl?: string;
+  detailPageToken?: string;
+  detailPageUrl?: string;
+  jumpMode?: 'direct' | 'landing' | 'none';
+  templateProfileKey?: string;
   event?: string;               // 事件类型（subscribe/unsubscribe/SCAN 等）
   results?: DeliveryResult[];   // 发送结果（仅发出的消息）
   createdAt: string;
 }
 
+export interface MessageFilterAppItem {
+  id: string;
+  name: string;
+}
+
+export interface MessageListItem {
+  id: string;
+  direction: MessageDirection;
+  type: MessageRecordType;
+  channelId: string;
+  appId?: string;
+  appName?: string;
+  openId?: string;
+  title: string;
+  previewText: string;
+  contentFormat?: PushContentFormat;
+  originalUrl?: string;
+  detailPageUrl?: string;
+  jumpMode?: 'direct' | 'landing' | 'none';
+  event?: string;
+  createdAt: string;
+  delivery: MessageDeliverySummary;
+}
+
+export interface MessageListStats {
+  total: number;
+  recent24h: number;
+  success: number;
+  failed: number;
+}
+
+export interface MessageWorkspaceResponse {
+  items: MessageListItem[];
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+  stats: MessageListStats;
+  filters: {
+    apps: MessageFilterAppItem[];
+  };
+}
+
+export interface MessageDetailView extends Message {
+  delivery: MessageDeliverySummary;
+  previewText: string;
+}
+
 export interface PushMessageInput {
   title: string;
   desp?: string;
+  content?: string;
+  type?: SimplifiedSendType;
+  format?: PushContentFormat;
+  url?: string;
+  summary?: string;
+  short?: string;
+  template?: string;
 }
 
 export interface PushResult {
@@ -52,4 +128,43 @@ export interface PushResult {
   success: number;
   failed: number;
   results?: DeliveryResult[];
+}
+
+export interface NormalizedMessage {
+  title: string;
+  summary: string;
+  body: string;
+  type?: SimplifiedSendType;
+  contentFormat: PushContentFormat;
+  originalUrl?: string;
+  detailPageUrl?: string;
+  detailPageToken?: string;
+  jumpMode: 'direct' | 'landing' | 'none';
+  templateProfileKey?: string;
+}
+
+export interface MessageDetailSnapshot {
+  token: string;
+  messageId: string;
+  appId?: string;
+  appKey?: string;
+  appName?: string;
+  title: string;
+  summary: string;
+  body: string;
+  contentFormat: PushContentFormat;
+  originalUrl?: string;
+  createdAt: string;
+}
+
+export interface PublicMessageDetail {
+  token: string;
+  title: string;
+  summary: string;
+  body: string;
+  contentFormat: PushContentFormat;
+  renderedHtml: string;
+  originalUrl?: string;
+  appName?: string;
+  createdAt: string;
 }

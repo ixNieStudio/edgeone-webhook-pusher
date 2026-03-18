@@ -10,11 +10,13 @@ import type { Channel, CreateChannelInput, UpdateChannelInput } from '../../type
 vi.mock('../../shared/kv-client.js', () => ({
   channelsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
     put: vi.fn(),
     delete: vi.fn(),
   },
   appsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
   },
 }));
 

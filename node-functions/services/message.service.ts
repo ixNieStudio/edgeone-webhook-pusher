@@ -5,8 +5,19 @@
  */
 
 import { messagesKV } from '../shared/kv-client.js';
-import type { Message, MessageDirection } from '../types/index.js';
-import { KVKeys } from '../types/index.js';
+import type {
+  Message,
+  MessageDeliverySummary,
+  MessageDirection,
+  MessageDetailView,
+  MessageListItem,
+  MessageListStats,
+  MessageWorkspaceResponse,
+} from '../types/index.js';
+import { KVKeys, LegacyKVKeys } from '../types/index.js';
+import { adminIndexService } from './admin-index.service.js';
+import { appService } from './app.service.js';
+import { openidService } from './openid.service.js';
 
 interface ListOptions {
   page?: number;
@@ -43,16 +54,28 @@ interface MessageIndexMeta {
 
 interface MessageIndexCollection {
   global: string[];
-  channels: Map<string, string[]>;
+  globalHead: string[];
+  globalCount: number;
   apps: Map<string, string[]>;
-  openIds: Map<string, string[]>;
+  appHeads: Map<string, string[]>;
+  appCounts: Map<string, number>;
 }
 
+interface MessageIndexDescriptor {
+  fullKey: string;
+  headKey: string;
+  countKey: string;
+  requiresRepairOnMissing: boolean;
+  limit: number;
+  isGlobal: boolean;
+}
+
+type MessageSummaryRecord = MessageListItem;
+
 const GLOBAL_INDEX_LIMIT = 10000;
-const CHANNEL_INDEX_LIMIT = 5000;
 const APP_INDEX_LIMIT = 5000;
-const OPENID_INDEX_LIMIT = 1000;
 const MESSAGE_INDEX_VERSION = 1;
+const MESSAGE_HEAD_INDEX_LIMIT = 200;
 
 /**
  * 批量处理 Promise，避免并发过多
@@ -76,8 +99,25 @@ async function batchProcess<T, R>(
   return results;
 }
 
+function chunkItems<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 class MessageService {
   private rebuildIndexesPromise: Promise<void> | null = null;
+
+  private async loadMessagesByKeys(keys: string[]): Promise<Array<Message | null>> {
+    if (keys.length === 0) {
+      return [];
+    }
+
+    const messageMap = await messagesKV.getMany<Message>(keys);
+    return keys.map((key) => messageMap[key] ?? null);
+  }
 
   /**
    * 保存消息记录
@@ -92,7 +132,11 @@ class MessageService {
     const skipIndexes = options?.skipIndexes === true;
 
     // 保存消息记录
-    await messagesKV.put(KVKeys.MESSAGE(message.id), message);
+    const summary = this.toMessageSummaryRecord(message);
+    await messagesKV.putMany<unknown>([
+      { key: KVKeys.MESSAGE(message.id), value: message },
+      { key: KVKeys.MESSAGE_SUMMARY(message.id), value: summary },
+    ]);
 
     // 轻量模式会导致列表查询无法命中索引，删除元数据以便后续查询触发自修复
     if (skipIndexes) {
@@ -110,52 +154,131 @@ class MessageService {
     return messagesKV.get<Message>(KVKeys.MESSAGE(id));
   }
 
+  async listSummaries(options: ListOptions = {}, baseUrl: string): Promise<MessageWorkspaceResponse> {
+    const { page = 1, pageSize = 20, channelId, appId, openId, direction, startDate, endDate } = options;
+    const [appFilters, pageResult] = await Promise.all([
+      this.getFilterApps(baseUrl),
+      !direction && !startDate && !endDate && !channelId && !openId
+        ? this.getIndexedPage(this.getIndexDescriptor({ appId }), page, pageSize)
+        : Promise.resolve(null),
+    ]);
+    const appNameById = new Map(appFilters.map((item) => [item.id, item.name]));
+
+    if (pageResult) {
+      const items = await this.loadListItems(pageResult.ids, appNameById);
+      return {
+        items,
+        pagination: {
+          total: pageResult.total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(pageResult.total / pageSize),
+        },
+        stats: this.buildListStats(items, pageResult.total),
+        filters: {
+          apps: appFilters,
+        },
+      };
+    }
+
+    const result = await this.list(options);
+    const items = result.messages.map((message) => this.toMessageListItem(message, appNameById));
+
+    return {
+      items,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        pageSize: result.pageSize,
+        totalPages: Math.ceil(result.total / result.pageSize),
+      },
+      stats: this.buildListStats(items, result.total),
+      filters: {
+        apps: appFilters,
+      },
+    };
+  }
+
+  async getDetail(id: string, baseUrl: string): Promise<MessageDetailView | null> {
+    const message = await this.get(id);
+    if (!message) {
+      return null;
+    }
+
+    const detail: MessageDetailView = {
+      ...message,
+      previewText: this.buildPreviewText(message),
+      delivery: this.getDeliverySummary(message),
+    };
+
+    if (message.appId && !message.appName) {
+      const appSummary = await adminIndexService.getAppSummaryById(message.appId, baseUrl);
+      if (appSummary) {
+        detail.appName = appSummary.name;
+      } else {
+        const app = await appService.getById(message.appId);
+        if (app) {
+          detail.appName = app.name;
+        }
+      }
+    }
+
+    if (message.direction === 'inbound' && message.openId && message.channelId && (!message.userNickname || !message.userAvatar)) {
+      const channelApps = await appService.listByChannel(message.channelId);
+      if (channelApps.length > 0) {
+        const records = await Promise.all(
+          channelApps.map((app) => openidService.findByOpenId(app.id, message.openId!))
+        );
+        const matched = records.find((record) => record && (record.nickname || record.avatar));
+        if (matched) {
+          detail.userNickname = matched.nickname;
+          detail.userAvatar = matched.avatar;
+        }
+      }
+    }
+
+    return detail;
+  }
+
   /**
    * 分页查询消息历史（优化版 - 只查询当前页数据）
    */
   async list(options: ListOptions = {}): Promise<ListResult> {
     const { page = 1, pageSize = 20, channelId, appId, openId, direction, startDate, endDate } = options;
-    await this.ensureIndexesReady();
+    const indexDescriptor = this.getIndexDescriptor({ appId });
 
-    // 根据筛选条件选择最优的索引列表
-    const ids = await this.getIndexedIds({ channelId, appId, openId });
-
-    // 如果没有其他筛选条件，直接分页返回（最优情况）
-    if (!direction && !startDate && !endDate && (!channelId || openId || appId) && (!appId || openId)) {
-      const total = ids.length;
-      const startIdx = (page - 1) * pageSize;
-      const pageIds = ids.slice(startIdx, startIdx + pageSize);
-      
-      // 只查询当前页的消息
-      const messages: Message[] = [];
-      const messagePromises = pageIds.map(id => messagesKV.get<Message>(KVKeys.MESSAGE(id)));
-      const messageResults = await Promise.all(messagePromises);
-      
-      for (const data of messageResults) {
-        if (data) {
-          messages.push(data);
-        }
+    if (!direction && !startDate && !endDate) {
+      const pageResult = await this.getIndexedPage(indexDescriptor, page, pageSize);
+      if (pageResult.total === 0) {
+        return { messages: [], total: 0, page, pageSize };
       }
-      
-      return { messages, total, page, pageSize };
+
+      const messageMap = await messagesKV.getMany<Message>(pageResult.ids.map((id) => KVKeys.MESSAGE(id)));
+      const messages = pageResult.ids
+        .map((id) => messageMap[KVKeys.MESSAGE(id)] ?? null)
+        .filter((message): message is Message => message !== null);
+
+      return { messages, total: pageResult.total, page, pageSize };
     }
 
-    // 有额外筛选条件时，需要查询所有消息进行筛选
-    // 但我们可以分批查询以提高性能
+    const ids = await this.getFullIndexIds(indexDescriptor);
+    if (ids.length === 0) {
+      return { messages: [], total: 0, page, pageSize };
+    }
+
     const batchSize = 100;
     const allMessages: Message[] = [];
     
     for (let i = 0; i < ids.length; i += batchSize) {
       const batchIds = ids.slice(i, i + batchSize);
-      const batchPromises = batchIds.map(id => messagesKV.get<Message>(KVKeys.MESSAGE(id)));
-      const batchResults = await Promise.all(batchPromises);
-      
-      for (const data of batchResults) {
+      const batchMap = await messagesKV.getMany<Message>(batchIds.map((id) => KVKeys.MESSAGE(id)));
+      batchIds.forEach((id) => {
+        const data = batchMap[KVKeys.MESSAGE(id)] ?? null;
         if (data) {
           allMessages.push(data);
         }
-      }
-      
+      });
+
       // 如果已经收集到足够多的消息（超过当前页需要的数量），可以提前停止
       // 但由于需要筛选，我们还是需要继续查询
     }
@@ -229,7 +352,10 @@ class MessageService {
     const data = await this.get(id);
     if (!data) return false;
 
-    await messagesKV.delete(KVKeys.MESSAGE(id));
+    await messagesKV.deleteMany([
+      KVKeys.MESSAGE(id),
+      KVKeys.MESSAGE_SUMMARY(id),
+    ]);
     await this.removeMessageFromIndexes(data);
     return true;
   }
@@ -246,16 +372,17 @@ class MessageService {
     const keys = result.keys;
 
     // 批量获取消息（每批 50 个），避免并发过多
-    const messages = await batchProcess(
-      keys,
-      key => messagesKV.get<Message>(key),
-      50
+    const messageRecords = await batchProcess(
+      chunkItems(keys, 50),
+      (batch) => this.loadMessagesByKeys(batch),
+      1
     );
+    const flatMessages = messageRecords.flat();
 
     // 找出需要删除的消息
     const toDelete: string[] = [];
     const expiredMessages: Message[] = [];
-    messages.forEach((data, index) => {
+    flatMessages.forEach((data, index) => {
       if (data && new Date(data.createdAt) < cutoff) {
         toDelete.push(keys[index]);
         expiredMessages.push(data);
@@ -265,7 +392,13 @@ class MessageService {
     // 批量删除过期消息（每批 50 个）
     await batchProcess(
       toDelete,
-      key => messagesKV.delete(key),
+      async (key) => {
+        const id = key.slice(KVKeys.MESSAGE_PREFIX.length);
+        await messagesKV.deleteMany([
+          key,
+          KVKeys.MESSAGE_SUMMARY(id),
+        ]);
+      },
       50
     );
 
@@ -283,6 +416,8 @@ class MessageService {
    * 只统计最近 20 条消息，避免一次性加载过多数据
    */
   async getStats(): Promise<Stats> {
+    await this.ensureIndexesReady();
+    const meta = await messagesKV.get<MessageIndexMeta>(KVKeys.MESSAGE_INDEX_META);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -291,13 +426,14 @@ class MessageService {
     const keys = result.keys;
 
     // 批量获取消息（每批 50 个），避免并发过多
-    const messages = await batchProcess(
-      keys,
-      key => messagesKV.get<Message>(key),
-      50
+    const messageRecords = await batchProcess(
+      chunkItems(keys, 50),
+      (batch) => this.loadMessagesByKeys(batch),
+      1
     );
+    const messages = messageRecords.flat();
 
-    let total = 0;
+    let total = meta?.total ?? 0;
     let todayCount = 0;
     let inbound = 0;
     let outbound = 0;
@@ -306,8 +442,6 @@ class MessageService {
 
     for (const data of messages) {
       if (data) {
-        total++;
-
         if (new Date(data.createdAt) >= today) {
           todayCount++;
         }
@@ -335,67 +469,185 @@ class MessageService {
     return { total, today: todayCount, inbound, outbound, success, failed };
   }
 
-  private async getIndexedIds(filters: Pick<ListOptions, 'channelId' | 'appId' | 'openId'>): Promise<string[]> {
-    const { channelId, appId, openId } = filters;
+  async getTotalCount(): Promise<number> {
+    const count = await messagesKV.get<number>(KVKeys.MESSAGE_COUNT);
+    if (typeof count === 'number') {
+      return count;
+    }
 
-    if (openId) {
-      return (await messagesKV.get<string[]>(KVKeys.MESSAGE_OPENID(openId))) || [];
-    }
+    await this.ensureIndexesReady();
+    return (await messagesKV.get<number>(KVKeys.MESSAGE_COUNT)) ?? 0;
+  }
+
+  private getIndexDescriptor(filters: Pick<ListOptions, 'appId'>): MessageIndexDescriptor {
+    const { appId } = filters;
     if (appId) {
-      return (await messagesKV.get<string[]>(KVKeys.MESSAGE_APP(appId))) || [];
+      return {
+        fullKey: KVKeys.MESSAGE_APP(appId),
+        headKey: KVKeys.MESSAGE_APP_HEAD(appId),
+        countKey: KVKeys.MESSAGE_APP_COUNT(appId),
+        requiresRepairOnMissing: false,
+        limit: APP_INDEX_LIMIT,
+        isGlobal: false,
+      };
     }
-    if (channelId) {
-      return (await messagesKV.get<string[]>(KVKeys.MESSAGE_CHANNEL(channelId))) || [];
+
+    return {
+      fullKey: KVKeys.MESSAGE_LIST,
+      headKey: KVKeys.MESSAGE_LIST_HEAD,
+      countKey: KVKeys.MESSAGE_COUNT,
+      requiresRepairOnMissing: true,
+      limit: GLOBAL_INDEX_LIMIT,
+      isGlobal: true,
+    };
+  }
+
+  private async getIndexedPage(
+    descriptor: MessageIndexDescriptor,
+    page: number,
+    pageSize: number
+  ): Promise<{ ids: string[]; total: number }> {
+    const startIdx = (page - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    const canUseHead = endIdx <= MESSAGE_HEAD_INDEX_LIMIT;
+    let cachedCount: number | null = null;
+
+    if (canUseHead) {
+      const keyMap = await messagesKV.getMany<string[] | number>([
+        descriptor.headKey,
+        descriptor.countKey,
+      ]);
+      const headIds = keyMap[descriptor.headKey];
+      const count = keyMap[descriptor.countKey];
+
+      if (Array.isArray(headIds) && typeof count === 'number') {
+        return {
+          ids: headIds.slice(startIdx, endIdx),
+          total: count,
+        };
+      }
+
+      cachedCount = typeof count === 'number' ? count : null;
     }
-    return (await messagesKV.get<string[]>(KVKeys.MESSAGE_LIST)) || [];
+
+    const fullIds = await this.getFullIndexIds(descriptor);
+    if (fullIds.length === 0) {
+      return { ids: [], total: 0 };
+    }
+
+    const total = cachedCount ?? fullIds.length;
+    if (canUseHead) {
+      void Promise.all([
+        messagesKV.put(descriptor.headKey, fullIds.slice(0, MESSAGE_HEAD_INDEX_LIMIT)),
+        cachedCount === null ? messagesKV.put(descriptor.countKey, fullIds.length) : Promise.resolve(),
+      ]);
+    }
+
+    return {
+      ids: fullIds.slice(startIdx, endIdx),
+      total,
+    };
+  }
+
+  private async getFullIndexIds(descriptor: MessageIndexDescriptor): Promise<string[]> {
+    let ids = await messagesKV.get<string[]>(descriptor.fullKey);
+    if (ids) {
+      return ids;
+    }
+
+    if (!descriptor.requiresRepairOnMissing) {
+      return [];
+    }
+
+    await this.ensureIndexesReady();
+    ids = await messagesKV.get<string[]>(descriptor.fullKey);
+    return ids || [];
   }
 
   private async addMessageToIndexes(message: Message): Promise<void> {
     await Promise.all(
-      this.getIndexDescriptors(message).map(({ key, limit }) =>
-        this.prependIndexId(key, message.id, limit)
+      this.getIndexDescriptors(message).map(({ fullKey, headKey, countKey, limit, isGlobal }) =>
+        this.prependIndexId(fullKey, headKey, countKey, message.id, limit, isGlobal)
       )
     );
   }
 
   private async removeMessageFromIndexes(message: Message): Promise<void> {
     await Promise.all(
-      this.getIndexDescriptors(message).map(({ key }) =>
-        this.removeIndexId(key, message.id)
+      this.getIndexDescriptors(message).map(({ fullKey, headKey, countKey, isGlobal }) =>
+        this.removeIndexId(fullKey, headKey, countKey, message.id, isGlobal)
       )
     );
   }
 
-  private getIndexDescriptors(message: Message): Array<{ key: string; limit: number }> {
-    const descriptors = [
-      { key: KVKeys.MESSAGE_LIST, limit: GLOBAL_INDEX_LIMIT },
-      { key: KVKeys.MESSAGE_CHANNEL(message.channelId), limit: CHANNEL_INDEX_LIMIT },
+  private getIndexDescriptors(message: Message): MessageIndexDescriptor[] {
+    const descriptors: MessageIndexDescriptor[] = [
+      {
+        fullKey: KVKeys.MESSAGE_LIST,
+        headKey: KVKeys.MESSAGE_LIST_HEAD,
+        countKey: KVKeys.MESSAGE_COUNT,
+        limit: GLOBAL_INDEX_LIMIT,
+        isGlobal: true,
+        requiresRepairOnMissing: true,
+      },
     ];
 
     if (message.appId) {
-      descriptors.push({ key: KVKeys.MESSAGE_APP(message.appId), limit: APP_INDEX_LIMIT });
-    }
-
-    if (message.openId) {
-      descriptors.push({ key: KVKeys.MESSAGE_OPENID(message.openId), limit: OPENID_INDEX_LIMIT });
+      descriptors.push({
+        fullKey: KVKeys.MESSAGE_APP(message.appId),
+        headKey: KVKeys.MESSAGE_APP_HEAD(message.appId),
+        countKey: KVKeys.MESSAGE_APP_COUNT(message.appId),
+        limit: APP_INDEX_LIMIT,
+        isGlobal: false,
+        requiresRepairOnMissing: false,
+      });
     }
 
     return descriptors;
   }
 
-  private async prependIndexId(key: string, id: string, limit: number): Promise<void> {
-    const existing = (await messagesKV.get<string[]>(key)) || [];
+  private async prependIndexId(
+    fullKey: string,
+    headKey: string,
+    countKey: string,
+    id: string,
+    limit: number,
+    isGlobal: boolean,
+  ): Promise<void> {
+    const existing = (await messagesKV.get<string[]>(fullKey)) || [];
     const next = [id, ...existing.filter((item) => item !== id)];
 
     if (next.length > limit) {
       next.length = limit;
     }
 
-    await messagesKV.put(key, next);
+    const operations: Array<Promise<void>> = [
+      messagesKV.putMany<unknown>([
+        { key: fullKey, value: next },
+        { key: headKey, value: next.slice(0, MESSAGE_HEAD_INDEX_LIMIT) },
+        { key: countKey, value: next.length },
+      ]),
+    ];
+
+    if (isGlobal) {
+      operations.push(messagesKV.put(KVKeys.MESSAGE_INDEX_META, {
+        version: MESSAGE_INDEX_VERSION,
+        rebuiltAt: new Date().toISOString(),
+        total: next.length,
+      }));
+    }
+
+    await Promise.all(operations);
   }
 
-  private async removeIndexId(key: string, id: string): Promise<void> {
-    const existing = await messagesKV.get<string[]>(key);
+  private async removeIndexId(
+    fullKey: string,
+    headKey: string,
+    countKey: string,
+    id: string,
+    isGlobal: boolean,
+  ): Promise<void> {
+    const existing = await messagesKV.get<string[]>(fullKey);
     if (!existing || existing.length === 0) {
       return;
     }
@@ -406,20 +658,248 @@ class MessageService {
     }
 
     if (next.length === 0) {
-      await messagesKV.delete(key);
+      await Promise.all([
+        messagesKV.deleteMany([fullKey, headKey, countKey]),
+        ...(isGlobal ? [messagesKV.put(KVKeys.MESSAGE_INDEX_META, {
+          version: MESSAGE_INDEX_VERSION,
+          rebuiltAt: new Date().toISOString(),
+          total: 0,
+        })] : []),
+      ]);
       return;
     }
 
-    await messagesKV.put(key, next);
+    const operations: Array<Promise<void>> = [
+      messagesKV.putMany<unknown>([
+        { key: fullKey, value: next },
+        { key: headKey, value: next.slice(0, MESSAGE_HEAD_INDEX_LIMIT) },
+        { key: countKey, value: next.length },
+      ]),
+    ];
+
+    if (isGlobal) {
+      operations.push(messagesKV.put(KVKeys.MESSAGE_INDEX_META, {
+        version: MESSAGE_INDEX_VERSION,
+        rebuiltAt: new Date().toISOString(),
+        total: next.length,
+      }));
+    }
+
+    await Promise.all(operations);
   }
 
   private async markIndexesNeedsRebuild(): Promise<void> {
     await messagesKV.delete(KVKeys.MESSAGE_INDEX_META);
   }
 
+  private async getFilterApps(baseUrl: string): Promise<MessageWorkspaceResponse['filters']['apps']> {
+    const summaries = await adminIndexService.listAppSummaries(baseUrl);
+    return summaries.map((summary) => ({
+      id: summary.id,
+      name: summary.name,
+    }));
+  }
+
+  private buildPreviewText(message: Message): string {
+    const source = message.summary
+      || message.content
+      || message.desp
+      || (message.type === 'event' && message.event ? `事件：${message.event}` : '');
+
+    return source.replace(/\s+/g, ' ').trim() || message.title;
+  }
+
+  private async loadListItems(
+    ids: string[],
+    appNameById: Map<string, string>
+  ): Promise<MessageListItem[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const summaryMap = await messagesKV.getMany<MessageSummaryRecord>(
+      ids.map((id) => KVKeys.MESSAGE_SUMMARY(id))
+    );
+
+    const items: MessageListItem[] = [];
+    const missingIds: string[] = [];
+
+    for (const id of ids) {
+      const summary = summaryMap[KVKeys.MESSAGE_SUMMARY(id)] ?? null;
+      if (summary) {
+        items.push(this.hydrateMessageListItem(summary, appNameById));
+      } else {
+        missingIds.push(id);
+      }
+    }
+
+    if (missingIds.length === 0) {
+      return items;
+    }
+
+    const messageMap = await messagesKV.getMany<Message>(missingIds.map((id) => KVKeys.MESSAGE(id)));
+    const recovered: Array<{ id: string; summary: MessageSummaryRecord }> = [];
+
+    for (const id of missingIds) {
+      const message = messageMap[KVKeys.MESSAGE(id)] ?? null;
+      if (!message) {
+        continue;
+      }
+
+      const summary = this.toMessageSummaryRecord(message);
+      recovered.push({ id, summary });
+      items.push(this.hydrateMessageListItem(summary, appNameById));
+    }
+
+    if (recovered.length > 0) {
+      void batchProcess(
+        recovered,
+        ({ id, summary }) => messagesKV.put(KVKeys.MESSAGE_SUMMARY(id), summary),
+        20
+      );
+    }
+
+    return ids
+      .map((id) => items.find((item) => item.id === id) ?? null)
+      .filter((item): item is MessageListItem => item !== null);
+  }
+
+  private getDeliverySummary(message: Message): MessageDeliverySummary {
+    if (message.direction === 'inbound') {
+      return {
+        total: 0,
+        success: 0,
+        failed: 0,
+        state: 'received',
+      };
+    }
+
+    const total = message.results?.length ?? 0;
+    const success = message.results?.filter((item) => item.success).length ?? 0;
+    const failed = Math.max(total - success, 0);
+
+    if (total === 0) {
+      return {
+        total,
+        success,
+        failed,
+        state: 'failed',
+      };
+    }
+
+    if (failed === 0) {
+      return {
+        total,
+        success,
+        failed,
+        state: 'success',
+      };
+    }
+
+    if (success === 0) {
+      return {
+        total,
+        success,
+        failed,
+        state: 'failed',
+      };
+    }
+
+    return {
+      total,
+      success,
+      failed,
+      state: 'partial',
+    };
+  }
+
+  private hydrateMessageListItem(
+    item: MessageSummaryRecord,
+    appNameById: Map<string, string>
+  ): MessageListItem {
+    if (!item.appId || item.appName) {
+      return item;
+    }
+
+    return {
+      ...item,
+      appName: appNameById.get(item.appId),
+    };
+  }
+
+  private toMessageSummaryRecord(message: Message): MessageSummaryRecord {
+    return {
+      id: message.id,
+      direction: message.direction,
+      type: message.type,
+      channelId: message.channelId,
+      appId: message.appId,
+      appName: message.appName,
+      openId: message.openId,
+      title: message.title,
+      previewText: this.buildPreviewText(message),
+      contentFormat: message.contentFormat,
+      originalUrl: message.originalUrl,
+      detailPageUrl: message.detailPageUrl,
+      jumpMode: message.jumpMode,
+      event: message.event,
+      createdAt: message.createdAt,
+      delivery: this.getDeliverySummary(message),
+    };
+  }
+
+  private toMessageListItem(message: Message, appNameById: Map<string, string>): MessageListItem {
+    return {
+      id: message.id,
+      direction: message.direction,
+      type: message.type,
+      channelId: message.channelId,
+      appId: message.appId,
+      appName: message.appName || (message.appId ? appNameById.get(message.appId) : undefined),
+      openId: message.openId,
+      title: message.title,
+      previewText: this.buildPreviewText(message),
+      contentFormat: message.contentFormat,
+      originalUrl: message.originalUrl,
+      detailPageUrl: message.detailPageUrl,
+      jumpMode: message.jumpMode,
+      event: message.event,
+      createdAt: message.createdAt,
+      delivery: this.getDeliverySummary(message),
+    };
+  }
+
+  private buildListStats(items: MessageListItem[], total: number): MessageListStats {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+
+    return items.reduce<MessageListStats>((stats, item) => {
+      if (new Date(item.createdAt).getTime() >= cutoff) {
+        stats.recent24h += 1;
+      }
+
+      stats.success += item.delivery.success;
+      stats.failed += item.delivery.failed;
+      return stats;
+    }, {
+      total,
+      recent24h: 0,
+      success: 0,
+      failed: 0,
+    });
+  }
+
   private async ensureIndexesReady(): Promise<void> {
-    const meta = await messagesKV.get<MessageIndexMeta>(KVKeys.MESSAGE_INDEX_META);
-    if (meta?.version === MESSAGE_INDEX_VERSION) {
+    const keyMap = await messagesKV.getMany<MessageIndexMeta | string[] | number>([
+      KVKeys.MESSAGE_INDEX_META,
+      KVKeys.MESSAGE_LIST,
+      KVKeys.MESSAGE_LIST_HEAD,
+      KVKeys.MESSAGE_COUNT,
+    ]);
+    const meta = keyMap[KVKeys.MESSAGE_INDEX_META] as MessageIndexMeta | null | undefined;
+    const globalIds = keyMap[KVKeys.MESSAGE_LIST] as string[] | null | undefined;
+    const globalHead = keyMap[KVKeys.MESSAGE_LIST_HEAD] as string[] | null | undefined;
+    const globalCount = keyMap[KVKeys.MESSAGE_COUNT] as number | null | undefined;
+    if (meta?.version === MESSAGE_INDEX_VERSION && globalIds && globalHead && typeof globalCount === 'number') {
       return;
     }
 
@@ -438,84 +918,118 @@ class MessageService {
 
   private async doRebuildIndexes(): Promise<void> {
     const messageKeys = await messagesKV.listAll(KVKeys.MESSAGE_PREFIX);
-    const messageRecords = await batchProcess(
-      messageKeys,
-      key => messagesKV.get<Message>(key),
-      50
-    );
+    const messageRecords = (
+      await batchProcess(
+        chunkItems(messageKeys, 50),
+        (batch) => this.loadMessagesByKeys(batch),
+        1
+      )
+    ).flat();
     const messages = messageRecords
       .filter((message): message is Message => message !== null)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     const indexes = this.buildIndexCollection(messages);
-    const [existingChannelKeys, existingAppKeys, existingOpenIdKeys] = await Promise.all([
-      messagesKV.listAll(KVKeys.MESSAGE_CHANNEL_PREFIX),
+    const [
+      existingAppKeys,
+      existingAppHeadKeys,
+      existingAppCountKeys,
+      existingSummaryKeys,
+      legacyChannelKeys,
+      legacyChannelHeadKeys,
+      legacyChannelCountKeys,
+      legacyOpenIdKeys,
+      legacyOpenIdHeadKeys,
+      legacyOpenIdCountKeys,
+    ] = await Promise.all([
       messagesKV.listAll(KVKeys.MESSAGE_APP_PREFIX),
-      messagesKV.listAll(KVKeys.MESSAGE_OPENID_PREFIX),
+      messagesKV.listAll(KVKeys.MESSAGE_APP_HEAD_PREFIX),
+      messagesKV.listAll(KVKeys.MESSAGE_APP_COUNT_PREFIX),
+      messagesKV.listAll(KVKeys.MESSAGE_SUMMARY_PREFIX),
+      messagesKV.listAll(LegacyKVKeys.MESSAGE_CHANNEL_PREFIX),
+      messagesKV.listAll(LegacyKVKeys.MESSAGE_CHANNEL_HEAD_PREFIX),
+      messagesKV.listAll(LegacyKVKeys.MESSAGE_CHANNEL_COUNT_PREFIX),
+      messagesKV.listAll(LegacyKVKeys.MESSAGE_OPENID_PREFIX),
+      messagesKV.listAll(LegacyKVKeys.MESSAGE_OPENID_HEAD_PREFIX),
+      messagesKV.listAll(LegacyKVKeys.MESSAGE_OPENID_COUNT_PREFIX),
     ]);
 
-    const putOperations: Array<{ key: string; value: string[] | MessageIndexMeta }> = [
+    const putOperations: Array<{ key: string; value: string[] | MessageIndexMeta | number }> = [
       { key: KVKeys.MESSAGE_LIST, value: indexes.global },
+      { key: KVKeys.MESSAGE_LIST_HEAD, value: indexes.globalHead },
+      { key: KVKeys.MESSAGE_COUNT, value: indexes.globalCount },
       {
         key: KVKeys.MESSAGE_INDEX_META,
         value: {
           version: MESSAGE_INDEX_VERSION,
           rebuiltAt: new Date().toISOString(),
-          total: messages.length,
+          total: indexes.globalCount,
         },
       },
     ];
+    const summaryOperations = messages.map((message) => ({
+      key: KVKeys.MESSAGE_SUMMARY(message.id),
+      value: this.toMessageSummaryRecord(message),
+    }));
 
-    for (const [key, value] of indexes.channels) {
-      putOperations.push({ key, value });
-    }
     for (const [key, value] of indexes.apps) {
       putOperations.push({ key, value });
     }
-    for (const [key, value] of indexes.openIds) {
+    for (const [key, value] of indexes.appHeads) {
       putOperations.push({ key, value });
     }
-
-    await batchProcess(
-      putOperations,
-      ({ key, value }) => messagesKV.put(key, value),
-      20
-    );
+    for (const [key, value] of indexes.appCounts) {
+      putOperations.push({ key, value });
+    }
+    await messagesKV.putMany<unknown>([...putOperations, ...summaryOperations]);
 
     const staleKeys = [
-      ...existingChannelKeys.filter((key) => !indexes.channels.has(key)),
       ...existingAppKeys.filter((key) => !indexes.apps.has(key)),
-      ...existingOpenIdKeys.filter((key) => !indexes.openIds.has(key)),
+      ...existingAppHeadKeys.filter((key) => !indexes.appHeads.has(key)),
+      ...existingAppCountKeys.filter((key) => !indexes.appCounts.has(key)),
+      ...existingSummaryKeys.filter((key) => !messageKeys.includes(key.replace(KVKeys.MESSAGE_SUMMARY_PREFIX, KVKeys.MESSAGE_PREFIX))),
     ];
 
-    await batchProcess(
-      staleKeys,
-      key => messagesKV.delete(key),
-      20
-    );
+    await messagesKV.deleteMany([
+      ...staleKeys,
+      ...legacyChannelKeys,
+      ...legacyChannelHeadKeys,
+      ...legacyChannelCountKeys,
+      ...legacyOpenIdKeys,
+      ...legacyOpenIdHeadKeys,
+      ...legacyOpenIdCountKeys,
+    ]);
   }
 
   private buildIndexCollection(messages: Message[]): MessageIndexCollection {
     const indexes: MessageIndexCollection = {
       global: [],
-      channels: new Map<string, string[]>(),
+      globalHead: [],
+      globalCount: messages.length,
       apps: new Map<string, string[]>(),
-      openIds: new Map<string, string[]>(),
+      appHeads: new Map<string, string[]>(),
+      appCounts: new Map<string, number>(),
     };
 
     for (const message of messages) {
       if (indexes.global.length < GLOBAL_INDEX_LIMIT) {
         indexes.global.push(message.id);
       }
-
-      this.pushIndexId(indexes.channels, KVKeys.MESSAGE_CHANNEL(message.channelId), message.id, CHANNEL_INDEX_LIMIT);
-
-      if (message.appId) {
-        this.pushIndexId(indexes.apps, KVKeys.MESSAGE_APP(message.appId), message.id, APP_INDEX_LIMIT);
+      if (indexes.globalHead.length < MESSAGE_HEAD_INDEX_LIMIT) {
+        indexes.globalHead.push(message.id);
       }
 
-      if (message.openId) {
-        this.pushIndexId(indexes.openIds, KVKeys.MESSAGE_OPENID(message.openId), message.id, OPENID_INDEX_LIMIT);
+      if (message.appId) {
+        this.pushIndexId(
+          indexes.apps,
+          indexes.appHeads,
+          indexes.appCounts,
+          KVKeys.MESSAGE_APP(message.appId),
+          KVKeys.MESSAGE_APP_HEAD(message.appId),
+          KVKeys.MESSAGE_APP_COUNT(message.appId),
+          message.id,
+          APP_INDEX_LIMIT
+        );
       }
     }
 
@@ -524,12 +1038,22 @@ class MessageService {
 
   private pushIndexId(
     collection: Map<string, string[]>,
+    headCollection: Map<string, string[]>,
+    countCollection: Map<string, number>,
     key: string,
+    headKey: string,
+    countKey: string,
     id: string,
     limit: number
   ): void {
     const list = collection.get(key);
     if (list) {
+      countCollection.set(countKey, (countCollection.get(countKey) ?? 0) + 1);
+      const headList = headCollection.get(headKey) ?? [];
+      if (headList.length < MESSAGE_HEAD_INDEX_LIMIT) {
+        headList.push(id);
+        headCollection.set(headKey, headList);
+      }
       if (list.length < limit) {
         list.push(id);
       }
@@ -537,6 +1061,8 @@ class MessageService {
     }
 
     collection.set(key, [id]);
+    headCollection.set(headKey, [id]);
+    countCollection.set(countKey, 1);
   }
 }
 

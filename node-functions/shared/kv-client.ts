@@ -15,6 +15,7 @@
  */
 
 import { AsyncLocalStorage } from 'async_hooks';
+import { getLegacyKVKey, getLegacyKVPrefix, normalizeLegacyKVKey } from '../types/constants.js';
 
 interface KVRequestContext {
   baseUrl: string;
@@ -116,8 +117,11 @@ function getAuthHeaders(): Record<string, string> {
  */
 export interface KVOperations<T = unknown> {
   get<R = T>(key: string): Promise<R | null>;
+  getMany<R = T>(keys: string[]): Promise<Record<string, R | null>>;
   put<R = T>(key: string, value: R, ttl?: number): Promise<void>;
+  putMany<R = T>(entries: Array<{ key: string; value: R; ttl?: number }>): Promise<void>;
   delete(key: string): Promise<void>;
+  deleteMany(keys: string[]): Promise<void>;
   list(prefix?: string, limit?: number, cursor?: string): Promise<KVListResult>;
   listAll(prefix?: string): Promise<string[]>;
 }
@@ -131,11 +135,20 @@ export interface KVListResult {
 interface KVResponse<T = unknown> {
   success: boolean;
   data?: T;
+  values?: Record<string, T | null>;
   keys?: string[];
   complete?: boolean;
   cursor?: string;
   error?: string;
 }
+
+interface KVPutEntry<T = unknown> {
+  key: string;
+  value: T;
+  ttl?: number;
+}
+
+const BATCH_WRITE_LIMIT = 100;
 
 /**
  * 统一解析 KV API 响应，避免 HTML/文本响应导致 JSON 解析异常
@@ -190,6 +203,30 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
     value.startsWith(namespacePrefix) ? value : `${namespacePrefix}${value}`;
   const stripNamespacePrefix = (value: string): string =>
     value.startsWith(namespacePrefix) ? value.slice(namespacePrefix.length) : value;
+  const applyLegacyNamespacePrefix = (value: string): string => {
+    const legacyKey = getLegacyKVKey(value);
+    return legacyKey ? applyNamespacePrefix(legacyKey) : '';
+  };
+  const createBulkGetRequest = async <R = T>(
+    namespacedKeys: string[],
+    baseUrl: string
+  ): Promise<Record<string, R | null>> => {
+    const url = `${baseUrl}/api/kv/new-kv?action=bulk_get`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ keys: namespacedKeys }),
+    });
+    const data = await parseKVResponse<R>(res, url);
+    if (!data.success) {
+      throw new Error(data.error || 'KV bulk get failed');
+    }
+
+    return (data.values || {}) as Record<string, R | null>;
+  };
 
   return {
     async get<R = T>(key: string): Promise<R | null> {
@@ -246,7 +283,26 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
             });
             throw new Error(data.error || 'KV get failed');
           }
-          return data.data ?? null;
+
+          if (data.data !== null && data.data !== undefined) {
+            return data.data;
+          }
+
+          const legacyNamespacedKey = applyLegacyNamespacePrefix(key);
+          if (!legacyNamespacedKey) {
+            return null;
+          }
+
+          const legacyUrl = `${baseUrl}/api/kv/new-kv?action=get&key=${encodeURIComponent(legacyNamespacedKey)}`;
+          const legacyRes = await fetch(legacyUrl, {
+            headers: getAuthHeaders(),
+          });
+          const legacyData = await parseKVResponse<R>(legacyRes, legacyUrl);
+          if (!legacyData.success) {
+            throw new Error(legacyData.error || 'KV legacy get failed');
+          }
+
+          return legacyData.data ?? null;
         } catch (error) {
           // 捕获 fetch 错误
           if (error instanceof Error && !error.message.includes('KV get failed')) {
@@ -280,6 +336,115 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       return (await inflight) as R | null;
     },
 
+    async getMany<R = T>(keys: string[]): Promise<Record<string, R | null>> {
+      if (keys.length === 0) {
+        return {};
+      }
+
+      const context = asyncLocalStorage.getStore();
+      const result: Record<string, R | null> = {};
+      const pendingKeys: string[] = [];
+      const pendingInflight: Array<Promise<void>> = [];
+
+      for (const key of keys) {
+        const cacheKey = getCacheKey(key);
+
+        if (context?.getCache.has(cacheKey)) {
+          result[key] = context.getCache.get(cacheKey) as R | null;
+          continue;
+        }
+
+        const existingInflight = context?.inflightGets.get(cacheKey);
+        if (existingInflight) {
+          pendingInflight.push(existingInflight.then((value) => {
+            result[key] = value as R | null;
+          }));
+          continue;
+        }
+
+        pendingKeys.push(key);
+      }
+
+      if (pendingInflight.length > 0) {
+        await Promise.all(pendingInflight);
+      }
+
+      if (pendingKeys.length === 0) {
+        return result;
+      }
+
+      const namespacedKeys = pendingKeys.map(applyNamespacePrefix);
+      const baseUrl = getBaseUrl();
+      const request = async (): Promise<Record<string, R | null>> => {
+        const values = await createBulkGetRequest<R>(namespacedKeys, baseUrl);
+        const resolved: Record<string, R | null> = {};
+        const missingLegacyMap = new Map<string, string>();
+        const legacyToCurrent = new Map<string, string[]>();
+
+        pendingKeys.forEach((key, index) => {
+          const namespacedKey = namespacedKeys[index];
+          const value = (values[namespacedKey] ?? null) as R | null;
+          if (value !== null) {
+            resolved[key] = value;
+            context?.getCache.set(getCacheKey(key), value as unknown);
+            return;
+          }
+
+          const legacyKey = getLegacyKVKey(key);
+          if (!legacyKey) {
+            resolved[key] = null;
+            context?.getCache.set(getCacheKey(key), null);
+            return;
+          }
+
+          const legacyNamespacedKey = applyNamespacePrefix(legacyKey);
+          missingLegacyMap.set(key, legacyNamespacedKey);
+          const currentKeys = legacyToCurrent.get(legacyNamespacedKey) || [];
+          currentKeys.push(key);
+          legacyToCurrent.set(legacyNamespacedKey, currentKeys);
+        });
+
+        if (missingLegacyMap.size > 0) {
+          const legacyValues = await createBulkGetRequest<R>(Array.from(legacyToCurrent.keys()), baseUrl);
+          for (const [legacyNamespacedKey, currentKeys] of legacyToCurrent.entries()) {
+            const value = (legacyValues[legacyNamespacedKey] ?? null) as R | null;
+            currentKeys.forEach((currentKey) => {
+              resolved[currentKey] = value;
+              context?.getCache.set(getCacheKey(currentKey), value as unknown);
+            });
+          }
+        }
+
+        for (const key of pendingKeys) {
+          if (!(key in resolved)) {
+            resolved[key] = null;
+            context?.getCache.set(getCacheKey(key), null);
+          }
+        }
+
+        return resolved;
+      };
+
+      if (!context) {
+        Object.assign(result, await request());
+        return result;
+      }
+
+      const inflight = request().finally(() => {
+        pendingKeys.forEach((key) => context.inflightGets.delete(getCacheKey(key)));
+      });
+
+      pendingKeys.forEach((key) => {
+        context.inflightGets.set(
+          getCacheKey(key),
+          inflight.then((resolved) => resolved[key] as unknown)
+        );
+      });
+
+      Object.assign(result, await inflight);
+      return result;
+    },
+
     async put<R = T>(key: string, value: R, ttl?: number): Promise<void> {
       const baseUrl = getBaseUrl();
       const context = asyncLocalStorage.getStore();
@@ -304,6 +469,42 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       context?.getCache.set(cacheKey, value as unknown);
     },
 
+    async putMany<R = T>(entries: Array<KVPutEntry<R>>): Promise<void> {
+      if (entries.length === 0) {
+        return;
+      }
+
+      const context = asyncLocalStorage.getStore();
+      const baseUrl = getBaseUrl();
+      const url = `${baseUrl}/api/kv/new-kv?action=batch_put`;
+      for (let start = 0; start < entries.length; start += BATCH_WRITE_LIMIT) {
+        const chunk = entries.slice(start, start + BATCH_WRITE_LIMIT);
+        const payload = chunk.map(({ key, value, ttl }) => ({
+          key: applyNamespacePrefix(key),
+          value,
+          ttl,
+        }));
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({ entries: payload }),
+        });
+        const data = await parseKVResponse(res, url);
+        if (!data.success) {
+          throw new Error(data.error || 'KV batch put failed');
+        }
+
+        chunk.forEach(({ key, value }) => {
+          const cacheKey = getCacheKey(key);
+          context?.inflightGets.delete(cacheKey);
+          context?.getCache.set(cacheKey, value as unknown);
+        });
+      }
+    },
+
     async delete(key: string): Promise<void> {
       const context = asyncLocalStorage.getStore();
       const cacheKey = getCacheKey(key);
@@ -321,6 +522,60 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       // 请求内写后读一致性：删除后视为 null
       context?.inflightGets.delete(cacheKey);
       context?.getCache.set(cacheKey, null);
+
+      const legacyKey = getLegacyKVKey(key);
+      if (legacyKey && legacyKey !== key) {
+        const legacyUrl = `${baseUrl}?action=delete&key=${encodeURIComponent(applyNamespacePrefix(legacyKey))}`;
+        const legacyRes = await fetch(legacyUrl, {
+          headers: getAuthHeaders(),
+        });
+        const legacyData = await parseKVResponse(legacyRes, legacyUrl);
+        if (!legacyData.success) {
+          throw new Error(legacyData.error || 'KV legacy delete failed');
+        }
+      }
+    },
+
+    async deleteMany(keys: string[]): Promise<void> {
+      if (keys.length === 0) {
+        return;
+      }
+
+      const context = asyncLocalStorage.getStore();
+      const baseUrl = getBaseUrl();
+      const url = `${baseUrl}/api/kv/new-kv?action=batch_delete`;
+      const payloadKeys = Array.from(new Set(
+        keys.flatMap((key) => {
+          const next = [applyNamespacePrefix(key)];
+          const legacyKey = getLegacyKVKey(key);
+          if (legacyKey && legacyKey !== key) {
+            next.push(applyNamespacePrefix(legacyKey));
+          }
+          return next;
+        })
+      ));
+
+      for (let start = 0; start < payloadKeys.length; start += BATCH_WRITE_LIMIT) {
+        const chunk = payloadKeys.slice(start, start + BATCH_WRITE_LIMIT);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify({ keys: chunk }),
+        });
+        const data = await parseKVResponse(res, url);
+        if (!data.success) {
+          throw new Error(data.error || 'KV batch delete failed');
+        }
+      }
+
+      keys.forEach((key) => {
+        const cacheKey = getCacheKey(key);
+        context?.inflightGets.delete(cacheKey);
+        context?.getCache.set(cacheKey, null);
+      });
     },
 
     async list(prefix = '', limit = 256, cursor?: string): Promise<KVListResult> {
@@ -342,10 +597,43 @@ function createKVClient<T = unknown>(namespace: string): KVOperations<T> {
       if (!data.success) {
         throw new Error(data.error || 'KV list failed');
       }
+
+      const currentKeys = (data.keys || []).map(stripNamespacePrefix);
+      if (currentKeys.length > 0 || cursor) {
+        return {
+          keys: currentKeys,
+          complete: data.complete ?? true,
+          cursor: data.cursor,
+        };
+      }
+
+      const legacyPrefix = getLegacyKVPrefix(prefix);
+      if (!legacyPrefix || legacyPrefix === prefix) {
+        return {
+          keys: currentKeys,
+          complete: data.complete ?? true,
+          cursor: data.cursor,
+        };
+      }
+
+      const legacyParams = new URLSearchParams({
+        action: 'list',
+        prefix: applyNamespacePrefix(legacyPrefix),
+        limit: String(limit),
+      });
+      const legacyUrl = `${baseUrl}?${legacyParams}`;
+      const legacyRes = await fetch(legacyUrl, {
+        headers: getAuthHeaders(),
+      });
+      const legacyData = await parseKVResponse(legacyRes, legacyUrl);
+      if (!legacyData.success) {
+        throw new Error(legacyData.error || 'KV legacy list failed');
+      }
+
       return {
-        keys: (data.keys || []).map(stripNamespacePrefix),
-        complete: data.complete ?? true,
-        cursor: data.cursor,
+        keys: (legacyData.keys || []).map(stripNamespacePrefix).map(normalizeLegacyKVKey),
+        complete: legacyData.complete ?? true,
+        cursor: legacyData.cursor,
       };
     },
 

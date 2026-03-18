@@ -9,14 +9,8 @@ import type { Channel, WorkWeChatConfig } from '../types/channel.js';
 import type { PushMessage, SendResult, ChannelCapability } from './types.js';
 import { ChannelCapability as ChannelCapabilityEnum } from './types.js';
 import { configKV } from '../shared/kv-client.js';
-
-// Access token cache TTL (2 hours, token valid for ~2h)
-const ACCESS_TOKEN_TTL = 7000; // slightly less than 2 hours
-
-interface TokenCache {
-  accessToken: string;
-  expiresAt: number;
-}
+import { KVKeys } from '../types/constants.js';
+import { workWeChatMaintenanceService } from '../services/work-wechat-maintenance.service.js';
 
 interface WorkWeChatAPIResponse {
   errcode: number;
@@ -27,6 +21,23 @@ interface WorkWeChatAPIResponse {
   invaliduser?: string;
   invalidparty?: string;
   invalidtag?: string;
+}
+
+interface WorkWeChatTemplateCard {
+  card_type: 'text_notice';
+  main_title: {
+    title: string;
+    desc?: string;
+  };
+  emphasis_content?: {
+    title: string;
+    desc?: string;
+  };
+  sub_title_text?: string;
+  horizontal_content_list?: Array<{
+    keyname: string;
+    value: string;
+  }>;
 }
 
 export class WorkWeChatStrategy extends BaseChannelStrategy {
@@ -104,36 +115,7 @@ export class WorkWeChatStrategy extends BaseChannelStrategy {
    * 实现 token 获取和缓存逻辑，支持自动刷新
    */
   protected async getAccessToken(): Promise<string> {
-    const cacheKey = `work_wechat_token:${this.config.corpId}:${this.config.agentId}`;
-
-    // 尝试从缓存获取
-    const cached = await configKV.get<TokenCache>(cacheKey);
-    if (cached?.accessToken && cached?.expiresAt > Date.now()) {
-      return cached.accessToken;
-    }
-
-    // 请求新 token
-    const url = `https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${this.config.corpId}&corpsecret=${this.config.corpSecret}`;
-    const response = await fetch(url);
-    const data = (await response.json()) as WorkWeChatAPIResponse;
-
-    if (data.errcode !== 0) {
-      throw new Error(`Failed to get access token: ${data.errmsg} (errcode: ${data.errcode})`);
-    }
-
-    if (!data.access_token || !data.expires_in) {
-      throw new Error('Invalid access token response from WorkWeChat API');
-    }
-
-    // 缓存 token（提前 5 分钟过期以避免边界情况）
-    const expiresAt = Date.now() + (data.expires_in - 300) * 1000;
-    const tokenData: TokenCache = {
-      accessToken: data.access_token,
-      expiresAt,
-    };
-    await configKV.put(cacheKey, tokenData, ACCESS_TOKEN_TTL);
-
-    return data.access_token;
+    return workWeChatMaintenanceService.getAccessToken(this.channel);
   }
 
   /**
@@ -145,7 +127,17 @@ export class WorkWeChatStrategy extends BaseChannelStrategy {
     // 判断 target 是用户ID还是部门ID
     // 部门ID以 'dept_' 前缀标识
     const isUser = !target.startsWith('dept_');
-    
+
+    if (message.renderer === 'template_card') {
+      return {
+        touser: isUser ? target : undefined,
+        toparty: !isUser ? target.replace('dept_', '') : undefined,
+        msgtype: 'template_card',
+        agentid: this.config.agentId,
+        template_card: this.buildTemplateCard(message),
+      };
+    }
+
     // 构建消息内容（应用特殊字符转义和长度限制）
     const content = message.desp
       ? `${message.title}\n\n${message.desp}`
@@ -160,6 +152,30 @@ export class WorkWeChatStrategy extends BaseChannelStrategy {
       text: {
         content: processedContent,
       },
+    };
+  }
+
+  private buildTemplateCard(message: PushMessage): WorkWeChatTemplateCard {
+    const detail = message.desp || '';
+    return {
+      card_type: 'text_notice',
+      main_title: {
+        title: message.title,
+        desc: detail ? '来自 EdgeOne MCP Pusher' : undefined,
+      },
+      emphasis_content: detail
+        ? {
+            title: detail.length > 120 ? `${detail.slice(0, 117)}...` : detail,
+            desc: '消息内容',
+          }
+        : undefined,
+      sub_title_text: detail || '无附加内容',
+      horizontal_content_list: [
+        {
+          keyname: '发送时间',
+          value: new Date().toLocaleString('zh-CN', { hour12: false }),
+        },
+      ],
     };
   }
 
@@ -181,10 +197,10 @@ export class WorkWeChatStrategy extends BaseChannelStrategy {
     // Token 失效（40014: invalid access_token, 42001: access_token expired），重试一次
     if (data.errcode === 40014 || data.errcode === 42001) {
       // 清除缓存并重新获取 token
-      const cacheKey = `work_wechat_token:${this.config.corpId}:${this.config.agentId}`;
+      const cacheKey = KVKeys.WORK_WECHAT_TOKEN(this.config.corpId, String(this.config.agentId));
       await configKV.delete(cacheKey);
       
-      const newToken = await this.getAccessToken();
+      const newToken = await workWeChatMaintenanceService.getAccessToken(this.channel, true);
       const retryUrl = `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${newToken}`;
       const retryResponse = await fetch(retryUrl, {
         method: 'POST',

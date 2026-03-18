@@ -4,8 +4,8 @@
  * URL: /{appKey}.send
  * Methods: GET, POST
  * 
- * GET: Query params - title (required), desp (optional)
- * POST: JSON body - { title, desp }
+ * GET: Query params - title (required), desp/content/type/url/format/summary/short/template (optional)
+ * POST: JSON body - { title, desp, content, type, url, format, summary, short, template }
  *
  * 无需认证 - 通过 App Key 验证
  */
@@ -15,7 +15,7 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import { pushService } from '../services/push.service.js';
 import { kvBaseUrlMiddleware } from '../middleware/index.js';
-import { ErrorCodes } from '../types/index.js';
+import { ApiError, ErrorCodes } from '../types/index.js';
 import type { PushMessageInput } from '../types/index.js';
 
 const app = new Koa();
@@ -87,7 +87,9 @@ app.use(async (ctx) => {
 
   // 推送消息
   try {
-    const result = await pushService.push(appKey, message);
+    const result = await pushService.push(appKey, message, {
+      baseUrl: `${ctx.protocol}://${ctx.host}`,
+    });
 
     ctx.body = {
       code: 0,
@@ -101,6 +103,15 @@ app.use(async (ctx) => {
       },
     };
   } catch (error) {
+    if (error instanceof ApiError) {
+      ctx.status = error.statusCode;
+      ctx.body = {
+        code: error.code,
+        message: error.message,
+        data: null,
+      };
+      return;
+    }
     console.error('Push error:', error);
     ctx.status = 500;
     ctx.body = {
@@ -143,18 +154,42 @@ function extractAppKey(pathname: string): string | null {
  */
 function parseMessage(ctx: Koa.Context): PushMessageInput {
   if (ctx.method === 'GET') {
-    // GET: 从 query params 获取
     return {
       title: ctx.query.title as string || '',
       desp: ctx.query.desp as string | undefined,
+      content: ctx.query.content as string | undefined,
+      type: ctx.query.type as PushMessageInput['type'],
+      url: ctx.query.url as string | undefined,
+      format: ctx.query.format as PushMessageInput['format'],
+      summary: ctx.query.summary as string | undefined,
+      short: ctx.query.short as string | undefined,
+      template: ctx.query.template as string | undefined,
     };
   }
 
-  // POST: 从 body 获取
-  const body = (ctx.request as { body?: { title?: string; desp?: string } }).body;
+  const body = (ctx.request as {
+    body?: {
+      title?: string;
+      desp?: string;
+      content?: string;
+      type?: PushMessageInput['type'];
+      url?: string;
+      format?: PushMessageInput['format'];
+      summary?: string;
+      short?: string;
+      template?: string;
+    };
+  }).body;
   return {
     title: body?.title || '',
     desp: body?.desp,
+    content: body?.content,
+    type: body?.type,
+    url: body?.url,
+    format: body?.format,
+    summary: body?.summary,
+    short: body?.short,
+    template: body?.template,
   };
 }
 

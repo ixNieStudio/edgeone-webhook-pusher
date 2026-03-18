@@ -19,9 +19,22 @@ import type { PushMessage, SendResult } from './types.js';
  * 飞书消息体接口
  */
 interface FeishuMessage {
-  msg_type: 'text';
-  content: {
-    text: string;
+  msg_type: 'text' | 'post' | 'interactive';
+  content?: {
+    text?: string;
+    zh_cn?: {
+      title: string;
+      content: Array<Array<Record<string, unknown>>>;
+    };
+  };
+  card?: {
+    header: {
+      title: {
+        tag: 'plain_text';
+        content: string;
+      };
+    };
+    elements: Array<Record<string, unknown>>;
   };
   timestamp?: string;
   sign?: string;
@@ -54,12 +67,51 @@ export class FeishuStrategy extends WebhookStrategy {
     }
 
     // 构建基础消息体
-    const feishuMessage: FeishuMessage = {
-      msg_type: 'text',
-      content: {
-        text: content
-      }
-    };
+    let feishuMessage: FeishuMessage;
+    if (message.renderer === 'markdown') {
+      feishuMessage = {
+        msg_type: 'post',
+        content: {
+          zh_cn: {
+            title: message.title,
+            content: [[
+              {
+                tag: 'text',
+                text: `${message.title}\n${message.desp || ''}`.trim(),
+              },
+            ]],
+          },
+        },
+      };
+    } else if (message.renderer === 'card') {
+      feishuMessage = {
+        msg_type: 'interactive',
+        card: {
+          header: {
+            title: {
+              tag: 'plain_text',
+              content: message.title,
+            },
+          },
+          elements: [
+            {
+              tag: 'div',
+              text: {
+                tag: 'lark_md',
+                content: message.desp || message.title,
+              },
+            },
+          ],
+        },
+      };
+    } else {
+      feishuMessage = {
+        msg_type: 'text',
+        content: {
+          text: content,
+        },
+      };
+    }
 
     // 如果配置了 secret，添加签名
     if (this.config.secret) {

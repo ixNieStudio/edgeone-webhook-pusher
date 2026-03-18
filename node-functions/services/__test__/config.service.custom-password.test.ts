@@ -9,6 +9,7 @@ import { configService } from '../config.service.js';
 import { configKV } from '../../shared/kv-client.js';
 import { now } from '../../shared/utils.js';
 import type { SystemConfig } from '../../types/index.js';
+import { KVKeys } from '../../types/constants.js';
 
 // Mock dependencies
 vi.mock('../../shared/kv-client.js', () => ({
@@ -175,7 +176,7 @@ describe('ConfigService - Custom Password Support', () => {
       
       expect(configKV.put).toHaveBeenCalledTimes(1);
       expect(configKV.put).toHaveBeenCalledWith(
-        'config',
+        KVKeys.CONFIG,
         expect.objectContaining({
           adminToken: customPassword,
         })

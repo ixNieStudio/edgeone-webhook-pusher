@@ -2,6 +2,8 @@
  * 策略模式核心类型定义
  */
 
+import type { PushContentFormat } from '../types/app-config.js';
+
 /**
  * 渠道能力类型
  */
@@ -16,8 +18,20 @@ export enum ChannelCapability {
 export interface PushMessage {
   title: string;
   desp?: string;
+  summary?: string;
+  body?: string;
+  contentFormat?: PushContentFormat;
+  originalUrl?: string;
+  detailPageUrl?: string;
+  jumpUrl?: string;
+  jumpMode?: 'direct' | 'landing' | 'none';
+  templateProfileKey?: string;
+  renderer?: 'text' | 'template' | 'template_card' | 'markdown' | 'card';
   templateId?: string;
   templateData?: Record<string, any>;
+  fallbackToText?: boolean;
+  atMobiles?: string[];
+  atAll?: boolean;
 }
 
 /**

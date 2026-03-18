@@ -25,9 +25,19 @@ interface DingTalkConfig extends WebhookConfig {
  * 钉钉消息体接口
  */
 interface DingTalkMessage {
-  msgtype: 'text';
-  text: {
+  msgtype: 'text' | 'markdown' | 'actionCard';
+  text?: {
     content: string;
+  };
+  markdown?: {
+    title: string;
+    text: string;
+  };
+  actionCard?: {
+    title: string;
+    text: string;
+    singleTitle: string;
+    singleURL: string;
   };
   at?: {
     atMobiles: string[];
@@ -62,12 +72,33 @@ export class DingTalkStrategy extends WebhookStrategy {
     }
 
     // 构建基础消息体
-    const dingtalkMessage: DingTalkMessage = {
-      msgtype: 'text',
-      text: {
-        content: content
-      }
-    };
+    let dingtalkMessage: DingTalkMessage;
+    if (message.renderer === 'markdown') {
+      dingtalkMessage = {
+        msgtype: 'markdown',
+        markdown: {
+          title: message.title,
+          text: `### ${message.title}\n\n${message.desp || ''}`.trim(),
+        },
+      };
+    } else if (message.renderer === 'card') {
+      dingtalkMessage = {
+        msgtype: 'actionCard',
+        actionCard: {
+          title: message.title,
+          text: `### ${message.title}\n\n${message.desp || ''}`.trim(),
+          singleTitle: '查看详情',
+          singleURL: 'https://edgeone.ai',
+        },
+      };
+    } else {
+      dingtalkMessage = {
+        msgtype: 'text',
+        text: {
+          content,
+        },
+      };
+    }
 
     // 处理 @mentions
     // 优先级：消息级别 > 渠道级别配置
@@ -77,8 +108,8 @@ export class DingTalkStrategy extends WebhookStrategy {
     // 只有在有 @mentions 或 @all 时才添加 at 字段
     if (atMobiles.length > 0 || isAtAll) {
       dingtalkMessage.at = {
-        atMobiles: atMobiles,
-        isAtAll: isAtAll
+        atMobiles,
+        isAtAll,
       };
     }
 

@@ -18,14 +18,15 @@ import {
   initRouter,
   authRouter,
   configRouter,
-  channelsRouter,
+  setupRouter,
+  channelCapabilitiesRouter,
+  settingsAuthProfilesRouter,
+  settingsIndexesRouter,
   appsRouter,
-  openidsRouter,
-  bindcodeRouter,
   messagesRouter,
+  publicMessagesRouter,
   statsRouter,
   wechatMsgRouter,
-  demoAppsRouter,
 } from '../routes/index.js';
 
 // ============ 创建 Koa 应用 ============
@@ -76,29 +77,32 @@ router.use(authRouter.allowedMethods());
 router.use(configRouter.routes());
 router.use(configRouter.allowedMethods());
 
-router.use(channelsRouter.routes());
-router.use(channelsRouter.allowedMethods());
+router.use(setupRouter.routes());
+router.use(setupRouter.allowedMethods());
+
+router.use(channelCapabilitiesRouter.routes());
+router.use(channelCapabilitiesRouter.allowedMethods());
+
+router.use(settingsAuthProfilesRouter.routes());
+router.use(settingsAuthProfilesRouter.allowedMethods());
+
+router.use(settingsIndexesRouter.routes());
+router.use(settingsIndexesRouter.allowedMethods());
 
 router.use(appsRouter.routes());
 router.use(appsRouter.allowedMethods());
 
-router.use(openidsRouter.routes());
-router.use(openidsRouter.allowedMethods());
-
-router.use(bindcodeRouter.routes());
-router.use(bindcodeRouter.allowedMethods());
-
 router.use(messagesRouter.routes());
 router.use(messagesRouter.allowedMethods());
+
+router.use(publicMessagesRouter.routes());
+router.use(publicMessagesRouter.allowedMethods());
 
 router.use(statsRouter.routes());
 router.use(statsRouter.allowedMethods());
 
 router.use(wechatMsgRouter.routes());
 router.use(wechatMsgRouter.allowedMethods());
-
-router.use(demoAppsRouter.routes());
-router.use(demoAppsRouter.allowedMethods());
 
 // 注册主路由
 app.use(router.routes());

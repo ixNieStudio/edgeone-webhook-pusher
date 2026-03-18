@@ -8,6 +8,7 @@ import type { Channel, WorkWeChatConfig } from '../../types/channel.js';
 import type { PushMessage } from '../types.js';
 import { ChannelCapability } from '../types.js';
 import { configKV } from '../../shared/kv-client.js';
+import { KVKeys } from '../../types/constants.js';
 
 // Mock fetch
 global.fetch = vi.fn();
@@ -106,7 +107,7 @@ describe('WorkWeChatStrategy', () => {
       const token = await strategy['getAccessToken']();
 
       expect(token).toBe('cached-token');
-      expect(configKV.get).toHaveBeenCalledWith('work_wechat_token:test-corp-id:1000001');
+      expect(configKV.get).toHaveBeenCalledWith(KVKeys.WORK_WECHAT_TOKEN('test-corp-id', '1000001'));
       expect(fetch).not.toHaveBeenCalled();
     });
 
@@ -331,7 +332,7 @@ describe('WorkWeChatStrategy', () => {
       const result = await strategy['sendRequest']('old-token', messageBody);
 
       expect(result.success).toBe(true);
-      expect(configKV.delete).toHaveBeenCalledWith('work_wechat_token:test-corp-id:1000001');
+      expect(configKV.delete).toHaveBeenCalledWith(KVKeys.WORK_WECHAT_TOKEN('test-corp-id', '1000001'));
       expect(fetch).toHaveBeenCalledTimes(3); // original + getToken + retry
     });
 

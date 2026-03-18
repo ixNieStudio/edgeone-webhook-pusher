@@ -9,12 +9,15 @@
 
 import { configKV } from '../shared/kv-client.js';
 import type { Channel } from '../types/channel.js';
+import { KVKeys } from '../types/constants.js';
 
 // Access token cache TTL (2 hours, token valid for ~2h)
 const ACCESS_TOKEN_TTL = 7000; // slightly less than 2 hours
 
 // Token status cache TTL (24 hours)
 const TOKEN_STATUS_TTL = 86400;
+const TOKEN_REFRESH_BUFFER_MS = 15 * 60 * 1000;
+const FAILED_STATUS_RETRY_MS = 5 * 60 * 1000;
 
 // 默认头像 URL
 const DEFAULT_AVATAR = '';
@@ -67,7 +70,7 @@ export function getWeChatErrorMessage(errcode: number): string {
 export function getAccessTokenCacheKey(channel: Channel): string {
   if (channel.type === 'wechat') {
     const config = channel.config as any;
-    return `wechat_access_token:${config.appId}`;
+    return KVKeys.WECHAT_TOKEN(config.appId);
   }
   throw new Error('Invalid channel type for access token cache key');
 }
@@ -76,7 +79,7 @@ export function getAccessTokenCacheKey(channel: Channel): string {
  * Generate cache key for token status based on channel
  */
 export function getTokenStatusCacheKey(channelId: string): string {
-  return `wechat_token_status:${channelId}`;
+  return KVKeys.WECHAT_TOKEN_STATUS(channelId);
 }
 
 interface TokenCache {
@@ -106,6 +109,13 @@ interface WeChatUserInfo {
 async function updateTokenStatus(channelId: string, status: TokenStatus): Promise<void> {
   const cacheKey = getTokenStatusCacheKey(channelId);
   await configKV.put(cacheKey, status, TOKEN_STATUS_TTL);
+
+  try {
+    const { adminIndexService } = await import('./admin-index.service.js');
+    await adminIndexService.syncAuthProfileById(channelId);
+  } catch {
+    // 摘要索引更新失败不应阻断 token 状态写入
+  }
 }
 
 /**
@@ -114,6 +124,22 @@ async function updateTokenStatus(channelId: string, status: TokenStatus): Promis
 export async function getTokenStatus(channelId: string): Promise<TokenStatus | null> {
   const cacheKey = getTokenStatusCacheKey(channelId);
   return configKV.get<TokenStatus>(cacheKey);
+}
+
+function shouldMaintainTokenStatus(status: TokenStatus | null, nowTs = Date.now()): boolean {
+  if (!status || status.lastRefreshAt <= 0) {
+    return true;
+  }
+
+  if (!status.lastRefreshSuccess || !status.valid) {
+    return nowTs - status.lastRefreshAt >= FAILED_STATUS_RETRY_MS;
+  }
+
+  if (typeof status.expiresAt !== 'number') {
+    return true;
+  }
+
+  return status.expiresAt - nowTs <= TOKEN_REFRESH_BUFFER_MS;
 }
 
 /**
@@ -366,6 +392,16 @@ export async function verifyChannelConfig(channel: Channel): Promise<{ valid: bo
   }
 }
 
+export async function ensureTokenMaintenance(channel: Channel): Promise<TokenStatus | null> {
+  const status = await getTokenStatus(channel.id);
+  if (!shouldMaintainTokenStatus(status)) {
+    return status;
+  }
+
+  await verifyChannelConfig(channel);
+  return getTokenStatus(channel.id);
+}
+
 /**
  * 创建带参数的临时二维码（仅认证服务号可用）
  * @param channel - 渠道配置
@@ -465,6 +501,7 @@ export const wechatService = {
   checkUserFollowStatus,
   getUserInfo,
   verifyChannelConfig,
+  ensureTokenMaintenance,
   getWeChatErrorMessage,
   getTokenStatus,
   createQRCode,

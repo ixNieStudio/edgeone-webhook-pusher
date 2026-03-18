@@ -11,21 +11,27 @@ import { appService } from '../app.service.js';
 import { appsKV, channelsKV } from '../../shared/kv-client.js';
 import type { Channel, WeChatConfig } from '../../types/channel.js';
 import type { CreateAppInput, WeChatAppConfig, WorkWeChatAppConfig, WebhookAppConfig } from '../../types/app.js';
-import { PushModes, MessageTypes } from '../../types/index.js';
+import { KVKeys, PushModes, MessageTypes } from '../../types/index.js';
 
 // Mock KV clients
 vi.mock('../../shared/kv-client.js', () => ({
   appsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
     put: vi.fn(),
+    putMany: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
   channelsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
   },
   openidsKV: {
     get: vi.fn(),
+    getMany: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
   },
 }));
 
@@ -65,6 +71,8 @@ describe('AppService - Property-Based Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockChannelsKV.get.mockResolvedValue(testChannel);
+    mockAppsKV.putMany.mockResolvedValue(undefined);
+    mockAppsKV.deleteMany.mockResolvedValue(undefined);
   });
 
   /**
@@ -96,10 +104,10 @@ describe('AppService - Property-Based Tests', () => {
             // - 对于 key 唯一性检查，总是返回 null（key 不存在）
             // - 对于 app list 查询，返回空数组
             mockAppsKV.get.mockImplementation(async (key: string) => {
-              if (key.includes('app_index:')) {
+              if (key.startsWith('ak:')) {
                 return null; // Key doesn't exist
               }
-              if (key === 'apps:list') {
+              if (key === KVKeys.APP_LIST) {
                 return [];
               }
               return null;
@@ -165,10 +173,10 @@ describe('AppService - Property-Based Tests', () => {
             
             // Mock KV 行为
             mockAppsKV.get.mockImplementation(async (key: string) => {
-              if (key.includes('app_index:')) {
+              if (key.startsWith('ak:')) {
                 return null;
               }
-              if (key === 'apps:list') {
+              if (key === KVKeys.APP_LIST) {
                 return [];
               }
               return null;
@@ -213,10 +221,10 @@ describe('AppService - Property-Based Tests', () => {
             mockChannelsKV.get.mockResolvedValue(testChannel);
             
             mockAppsKV.get.mockImplementation(async (key: string) => {
-              if (key.includes('app_index:')) {
+              if (key.startsWith('ak:')) {
                 return null;
               }
-              if (key === 'apps:list') {
+              if (key === KVKeys.APP_LIST) {
                 return [];
               }
               return null;
@@ -266,14 +274,14 @@ describe('AppService - Property-Based Tests', () => {
             // Mock: 前 2 次检查返回已存在，第 3 次返回不存在
             let checkCount = 0;
             mockAppsKV.get.mockImplementation(async (key: string) => {
-              if (key.includes('app_index:')) {
+              if (key.startsWith('ak:')) {
                 checkCount++;
                 if (checkCount <= 2) {
                   return 'existing_app_id'; // Key exists
                 }
                 return null; // Key doesn't exist
               }
-              if (key === 'apps:list') {
+              if (key === KVKeys.APP_LIST) {
                 return [];
               }
               return null;

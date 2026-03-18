@@ -13,6 +13,63 @@
 import type { Context, Next } from 'koa';
 import { runKVOperation } from '../shared/kv-client.js';
 
+function extractOriginFromRequest(ctx: Context, debug: boolean): string {
+  let origin = ctx.origin;
+
+  // 如果 ctx.origin 为 null，手动构建
+  if (!origin || origin === 'null') {
+    const protocol = ctx.get('x-forwarded-proto') || ctx.protocol || 'https';
+    if (debug) {
+      console.log('Detected protocol:', protocol);
+    }
+
+    // EdgeOne 特殊处理：从 referer 中提取真实域名
+    const referer = ctx.get('referer');
+    if (referer) {
+      try {
+        const refererUrl = new URL(referer);
+        origin = `${protocol}://${refererUrl.host}`;
+        if (debug) {
+          console.log('Extracted origin from referer:', origin);
+          console.log('=============================\n');
+        }
+        return origin;
+      } catch (e) {
+        if (debug) {
+          console.log('Failed to parse referer:', e);
+        }
+        // 解析失败，继续使用后备方案
+      }
+    }
+
+    // 后备方案：使用 Host 头
+    const host = ctx.get('x-forwarded-host') || ctx.get('host') || ctx.host;
+    if (debug) {
+      console.log('Detected host:', host);
+    }
+    if (host) {
+      origin = `${protocol}://${host}`;
+    } else {
+      if (debug) {
+        console.log('WARNING: No host found!');
+        console.log('=============================\n');
+      }
+      return '';
+    }
+  }
+
+  if (debug) {
+    console.log('Final baseUrl:', origin);
+    console.log('=============================\n');
+  }
+
+  return origin;
+}
+
+export function extractRequestOrigin(ctx: Context): string {
+  return extractOriginFromRequest(ctx, process.env.DEBUG_KV_URL === 'true');
+}
+
 /**
  * 从请求上下文中提取 baseUrl
  * 支持 EdgeOne 和其他部署环境
@@ -50,56 +107,7 @@ export function extractBaseUrl(ctx: Context): string {
     return envUrl.trim();
   }
 
-  // 尝试使用 Koa 的 ctx.origin
-  let origin = ctx.origin;
-  
-  // 如果 ctx.origin 为 null，手动构建
-  if (!origin || origin === 'null') {
-    const protocol = ctx.get('x-forwarded-proto') || ctx.protocol || 'https';
-    if (debug) {
-      console.log('Detected protocol:', protocol);
-    }
-    
-    // EdgeOne 特殊处理：从 referer 中提取真实域名
-    const referer = ctx.get('referer');
-    if (referer) {
-      try {
-        const refererUrl = new URL(referer);
-        origin = `${protocol}://${refererUrl.host}`;
-        if (debug) {
-          console.log('Extracted origin from referer:', origin);
-          console.log('=============================\n');
-        }
-        return origin;
-      } catch (e) {
-        if (debug) {
-          console.log('Failed to parse referer:', e);
-        }
-        // 解析失败，继续使用后备方案
-      }
-    }
-    
-    // 后备方案：使用 Host 头
-    const host = ctx.get('x-forwarded-host') || ctx.get('host') || ctx.host;
-    if (debug) {
-      console.log('Detected host:', host);
-    }
-    if (host) {
-      origin = `${protocol}://${host}`;
-    } else {
-      if (debug) {
-        console.log('WARNING: No host found!');
-        console.log('=============================\n');
-      }
-      return '';
-    }
-  }
-
-  if (debug) {
-    console.log('Final baseUrl:', origin);
-    console.log('=============================\n');
-  }
-  return origin;
+  return extractOriginFromRequest(ctx, debug);
 }
 
 /**

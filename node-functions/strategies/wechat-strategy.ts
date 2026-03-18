@@ -9,6 +9,7 @@ import type { Channel, WeChatConfig } from '../types/channel.js';
 import type { PushMessage, SendResult, ChannelCapability } from './types.js';
 import { ChannelCapability as ChannelCapabilityEnum } from './types.js';
 import { configKV } from '../shared/kv-client.js';
+import { KVKeys } from '../types/constants.js';
 
 // Access token cache TTL (2 hours, token valid for ~2h)
 const ACCESS_TOKEN_TTL = 7000; // slightly less than 2 hours
@@ -46,7 +47,7 @@ export class WeChatStrategy extends BaseChannelStrategy {
    * 实现 token 获取和缓存逻辑，支持自动刷新
    */
   protected async getAccessToken(): Promise<string> {
-    const cacheKey = `wechat_token:${this.config.appId}`;
+    const cacheKey = KVKeys.WECHAT_TOKEN(this.config.appId);
 
     // 尝试从缓存获取
     const cached = await configKV.get<TokenCache>(cacheKey);
@@ -88,10 +89,11 @@ export class WeChatStrategy extends BaseChannelStrategy {
       return {
         touser: openId,
         template_id: message.templateId,
+        ...(message.jumpUrl ? { url: message.jumpUrl } : {}),
         data: message.templateData || {
           first: { value: message.title },
-          keyword1: { value: message.desp || '' },
-          remark: { value: '' },
+          keyword1: { value: message.summary || message.desp || '' },
+          remark: { value: message.jumpUrl ? `点击查看详情\n${message.jumpUrl}` : '' },
         },
       };
     } else {
@@ -130,7 +132,7 @@ export class WeChatStrategy extends BaseChannelStrategy {
     // Token 失效（40001: invalid credential, 42001: access_token expired），重试一次
     if (data.errcode === 40001 || data.errcode === 42001) {
       // 清除缓存并重新获取 token
-      const cacheKey = `wechat_token:${this.config.appId}`;
+      const cacheKey = KVKeys.WECHAT_TOKEN(this.config.appId);
       await configKV.delete(cacheKey);
       
       const newToken = await this.getAccessToken();

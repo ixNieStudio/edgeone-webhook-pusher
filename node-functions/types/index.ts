@@ -7,9 +7,7 @@ export * from './channel';
 
 // App 应用
 export * from './app';
-
-// Demo App 体验应用
-export * from './demo-app';
+export * from './app-config';
 
 // OpenID 订阅者
 export * from './openid';

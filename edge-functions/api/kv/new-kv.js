@@ -58,6 +58,28 @@ export async function onRequest(context) {
         return jsonResponse(200, { success: true, data });
       }
 
+      case 'bulk_get': {
+        if (request.method !== 'POST') {
+          return jsonResponse(405, { success: false, error: 'bulk_get requires POST method' });
+        }
+
+        const body = await request.json();
+        if (!Array.isArray(body?.keys) || body.keys.length === 0) {
+          return jsonResponse(400, { success: false, error: 'Missing keys array in body' });
+        }
+
+        const uniqueKeys = Array.from(new Set(body.keys.filter((key) => typeof key === 'string' && key.length > 0)));
+        const uniqueEntries = await Promise.all(
+          uniqueKeys.map(async (key) => [key, await PUSHER_KV.get(key, 'json')])
+        );
+        const valueMap = Object.fromEntries(uniqueEntries);
+
+        return jsonResponse(200, {
+          success: true,
+          values: Object.fromEntries(body.keys.map((key) => [key, valueMap[key] ?? null])),
+        });
+      }
+
       case 'put': {
         if (request.method !== 'POST') {
           return jsonResponse(405, { success: false, error: 'PUT requires POST method' });
@@ -74,12 +96,54 @@ export async function onRequest(context) {
         return jsonResponse(200, { success: true });
       }
 
+      case 'batch_put': {
+        if (request.method !== 'POST') {
+          return jsonResponse(405, { success: false, error: 'batch_put requires POST method' });
+        }
+
+        const body = await request.json();
+        if (!Array.isArray(body?.entries) || body.entries.length === 0) {
+          return jsonResponse(400, { success: false, error: 'Missing entries array in body' });
+        }
+
+        await Promise.all(body.entries.map(async (entry) => {
+          if (!entry?.key) {
+            throw new Error('Missing key in batch_put entry');
+          }
+          if (entry.value === undefined) {
+            throw new Error(`Missing value for batch_put key ${entry.key}`);
+          }
+          const options = entry.ttl ? { expirationTtl: entry.ttl } : {};
+          await PUSHER_KV.put(entry.key, JSON.stringify(entry.value), options);
+        }));
+
+        return jsonResponse(200, { success: true });
+      }
+
       case 'delete': {
         const key = url.searchParams.get('key');
         if (!key) {
           return jsonResponse(400, { success: false, error: 'Missing key parameter' });
         }
         await PUSHER_KV.delete(key);
+        return jsonResponse(200, { success: true });
+      }
+
+      case 'batch_delete': {
+        if (request.method !== 'POST') {
+          return jsonResponse(405, { success: false, error: 'batch_delete requires POST method' });
+        }
+
+        const body = await request.json();
+        if (!Array.isArray(body?.keys) || body.keys.length === 0) {
+          return jsonResponse(400, { success: false, error: 'Missing keys array in body' });
+        }
+
+        await Promise.all(
+          Array.from(new Set(body.keys.filter((key) => typeof key === 'string' && key.length > 0)))
+            .map((key) => PUSHER_KV.delete(key))
+        );
+
         return jsonResponse(200, { success: true });
       }
 
@@ -104,7 +168,7 @@ export async function onRequest(context) {
       default:
         return jsonResponse(400, {
           success: false,
-          error: 'Invalid action. Use: get, put, delete, list',
+          error: 'Invalid action. Use: get, bulk_get, put, batch_put, delete, batch_delete, list',
         });
     }
   } catch (error) {
